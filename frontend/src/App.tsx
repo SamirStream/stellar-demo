@@ -171,9 +171,9 @@ const LandingView = ({ onConnect }: { onConnect: () => void }) => (
       <Button onClick={onConnect} variant="primary" className="px-10 py-5 w-full sm:w-auto relative z-10" icon={TerminalSquare}>
         Connect Wallet
       </Button>
-      <a href="https://stellar.expert/explorer/testnet" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto relative z-10">
+      <a href="https://github.com/SamirStream/stellar-demo" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto relative z-10">
         <Button variant="secondary" className="px-10 py-5 w-full h-full" icon={Globe2}>
-          View Explorer
+          Read the Docs
         </Button>
       </a>
     </div>
@@ -210,12 +210,11 @@ export default function App() {
   const wallet = useStellarWallet();
   const escrow = useDealEscrow(wallet.address, wallet.signTransaction);
 
-  // Live ticker — only real on-chain data, nothing shown if no deals loaded
+  // Live ticker — fetched on mount (read-only, no wallet needed), shown only on homepage
   const [tickerItems, setTickerItems] = useState<TickerItem[]>([]);
   const escrowRef = useRef(escrow);
   useEffect(() => { escrowRef.current = escrow; });
   useEffect(() => {
-    if (!wallet.isConnected) { setTickerItems([]); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -231,10 +230,10 @@ export default function App() {
           return dealToTickerItems(r.value, start + idx);
         });
         if (!cancelled && newItems.length > 0) setTickerItems(newItems);
-      } catch { /* no data available */ }
+      } catch { /* chain not reachable, ticker stays hidden */ }
     })();
     return () => { cancelled = true; };
-  }, [wallet.isConnected]);
+  }, []);
 
   // Toast system
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -288,8 +287,8 @@ export default function App() {
         <GlowingBackground />
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-        {/* Live Ticker — only shown when real on-chain data is available */}
-        {tickerItems.length > 0 && activeTab !== 'reputation' && (
+        {/* Live Ticker — homepage only, real on-chain data */}
+        {!wallet.isConnected && tickerItems.length > 0 && (
           <LiveTicker items={tickerItems} />
         )}
 
