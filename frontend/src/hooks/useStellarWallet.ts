@@ -133,14 +133,30 @@ export function useStellarWallet(): WalletState {
     setUsdcBalance('0');
   }, []);
 
-  // Sign a transaction with error categorization
+  // Sign a transaction with error categorization and timeout guard.
+  // Freighter's SUBMIT_TRANSACTION postMessage has no built-in timeout.
+  // xBull opens window.open() popup — if Firefox blocks it the promise
+  // hangs forever. We race against a 120s timeout so the UI never stalls.
   const signTransaction = useCallback(
     async (xdr: string, opts?: any): Promise<string> => {
+      const SIGN_TIMEOUT_MS = 120_000;
       try {
-        const { signedTxXdr } = await StellarWalletsKit.signTransaction(xdr, opts);
+        const signPromise = StellarWalletsKit.signTransaction(xdr, opts);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('__timeout__')),
+            SIGN_TIMEOUT_MS
+          )
+        );
+        const { signedTxXdr } = await Promise.race([signPromise, timeoutPromise]);
         return signedTxXdr;
       } catch (err: any) {
         const msg = (err?.message || '').toLowerCase();
+        if (msg === '__timeout__') {
+          throw new Error(
+            'Wallet signing timed out. If a popup opened, make sure popups are allowed for this page, then try again.'
+          );
+        }
         if (msg.includes('cancel') || msg.includes('reject') || msg.includes('denied') || msg.includes('user')) {
           throw new Error('Transaction cancelled by user.');
         }
