@@ -66,11 +66,15 @@ export function WalletConnectModal({
   const [code, setCode] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [oauthError, setOauthError] = useState('');
 
   // OAuth: each provider button calls initOAuth directly from THIS window (not iframe)
   const { initOAuth } = useLoginWithOAuth({
     onComplete: () => onClose(),
-    onError: () => setOauthLoading(null),
+    onError: (err) => {
+      setOauthLoading(null);
+      setOauthError(err ?? 'OAuth login failed.');
+    },
   });
 
   // Email OTP: no popup needed, works everywhere
@@ -86,6 +90,7 @@ export function WalletConnectModal({
 
   const handleOAuth = async (provider: OAuthProvider) => {
     if (!isPrivyAppConfigured || oauthLoading) return;
+    setOauthError('');
     setOauthLoading(provider);
     try {
       await initOAuth({ provider });
@@ -230,6 +235,9 @@ export function WalletConnectModal({
                 </button>
               ))}
             </div>
+            {oauthError && (
+              <p className="text-[11px] text-red-400 px-1">{oauthError}</p>
+            )}
 
             {/* Divider */}
             <div className="flex items-center gap-3">
