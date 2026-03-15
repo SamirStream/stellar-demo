@@ -1,10 +1,10 @@
 import { useState, useCallback, useContext, createContext, useRef, useEffect } from 'react';
-import { 
-  Award, FileText, 
+import {
+  Award, FileText,
   Zap, ArrowRightLeft,
   Coins, Plus,
   Network, Cpu, Lock,
-  TerminalSquare
+  TerminalSquare, Activity
 } from 'lucide-react';
 import { useStellarWallet } from './hooks/useStellarWallet';
 import { useDealEscrow } from './hooks/useDealEscrow';
@@ -46,6 +46,46 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
           <span className="text-sm font-medium">{t.message}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ============================================
+   Live Network Ticker
+   ============================================ */
+const TICKER_ITEMS = [
+  { hash: 'A3F7C2B1', amount: 25000, type: 'ESCROW_LOCK' },
+  { hash: 'D9E4A812', amount: 8500,  type: 'MILESTONE_RELEASE' },
+  { hash: 'F1B2C394', amount: 42000, type: 'FEE_SPLIT' },
+  { hash: 'C7A8D561', amount: 15750, type: 'ESCROW_LOCK' },
+  { hash: 'E2F9B034', amount: 33200, type: 'MILESTONE_RELEASE' },
+  { hash: 'B4C1A723', amount: 9800,  type: 'FEE_SPLIT' },
+  { hash: 'A9F3C8E1', amount: 67500, type: 'ESCROW_LOCK' },
+  { hash: 'D5B2A490', amount: 21000, type: 'MILESTONE_RELEASE' },
+];
+
+function LiveTicker() {
+  const doubled = [...TICKER_ITEMS, ...TICKER_ITEMS];
+  return (
+    <div className="w-full bg-[#050505] border-b border-zinc-900 flex items-center h-9 overflow-hidden text-[10px] font-mono font-bold uppercase tracking-widest relative z-40">
+      <div className="bg-emerald-500 text-[#010205] h-full px-4 flex items-center justify-center shrink-0 shadow-[10px_0_20px_rgba(0,0,0,0.9)]">
+        <Activity size={11} className="mr-2 animate-pulse" />
+        Live Network
+      </div>
+      <div className="flex-1 overflow-hidden">
+        <div className="flex whitespace-nowrap animate-marquee w-max">
+          {doubled.map((item, i) => (
+            <div key={i} className="flex items-center gap-5 px-6 text-zinc-600">
+              <span className="text-zinc-700">TX_{item.hash}</span>
+              <span className={item.type === 'MILESTONE_RELEASE' ? 'text-emerald-400' : 'text-zinc-500'}>
+                {item.type}
+              </span>
+              <span className="text-zinc-400">{item.amount.toLocaleString()} XLM</span>
+              <span className="text-zinc-800">·</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -177,6 +217,9 @@ export default function App() {
         <GlowingBackground />
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
+        {/* Live Ticker */}
+        <LiveTicker />
+
         {/* Header */}
         <header className="relative z-50 border-b border-zinc-800/80 bg-[#02040a]/80 backdrop-blur-2xl sticky top-0">
           <div className="max-w-[90rem] mx-auto px-6 h-24 flex items-center justify-between">
@@ -196,22 +239,19 @@ export default function App() {
             {wallet.isConnected ? (
               <div className="flex items-center gap-8">
                 {/* Tabs */}
-                <nav className="hidden lg:flex gap-1 bg-[#09090b] p-1.5 rounded-2xl border border-zinc-800/80 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
+                <nav className="hidden lg:flex gap-2">
                   {tabs.map(tab => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`relative flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 overflow-hidden ${
-                        activeTab === tab.id 
-                          ? 'text-[#02040a]' 
-                          : 'text-zinc-500 hover:text-white hover:bg-zinc-800/50'
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border ${
+                        activeTab === tab.id
+                          ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20 shadow-[inset_0_0_20px_rgba(74,222,128,0.05)]'
+                          : 'text-zinc-500 hover:text-white border-transparent hover:bg-zinc-900/60'
                       }`}
                     >
-                      {activeTab === tab.id && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-green-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] z-0"></div>
-                      )}
-                      <tab.icon size={16} className={`relative z-10`} />
-                      <span className="relative z-10">{tab.label}</span>
+                      <tab.icon size={14} />
+                      {tab.label}
                     </button>
                   ))}
                 </nav>

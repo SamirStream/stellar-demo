@@ -127,9 +127,21 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
     <div className="w-full max-w-5xl mx-auto space-y-8 pb-32 animate-fade-in relative z-10">
       
       {/* Header */}
-      <div className="text-center space-y-4 mb-12">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-2">
-          <Award size={14} />
+      <div className="text-center space-y-6 mb-12">
+        {/* Radar Icon */}
+        <div className="relative inline-block mb-4">
+          <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full"></div>
+          <div className="relative w-28 h-28 rounded-full border border-emerald-500/30 bg-[#02040a] flex items-center justify-center shadow-[inset_0_0_30px_rgba(16,185,129,0.1)] overflow-hidden">
+            <div className="absolute top-1/2 left-1/2 w-[112px] h-[112px] -translate-x-1/2 -translate-y-1/2 origin-center animate-radar">
+              <div className="w-full h-full bg-[conic-gradient(from_0deg,transparent_80%,rgba(74,222,128,0.35)_100%)] rounded-full"></div>
+            </div>
+            <div className="absolute inset-4 border border-emerald-500/10 rounded-full"></div>
+            <div className="absolute inset-8 border border-emerald-500/15 rounded-full"></div>
+            <Award size={28} className="text-emerald-400 relative z-10 drop-shadow-[0_0_12px_rgba(74,222,128,1)]" />
+          </div>
+        </div>
+
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
           <span className="text-xs font-bold tracking-widest uppercase">On-Chain Oracle</span>
         </div>
         <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
@@ -141,26 +153,27 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
       </div>
 
       {/* Search Input */}
-      <Card className="max-w-3xl mx-auto p-4 flex gap-4 bg-[#02040a]" glowOnHover>
-        <div className="relative flex-1">
-          <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500" />
+      <div className="flex flex-col md:flex-row gap-4 max-w-2xl mx-auto">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" size={20} />
           <input
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="Search public key (G...)"
+            onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
+            placeholder="Enter Public Key (G...)"
             title="Search public key"
-            className="w-full bg-[#09090b] border border-zinc-800 text-white rounded-xl pl-12 pr-4 py-4 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all font-mono"
+            className="w-full bg-[#050505] border border-zinc-800 rounded-2xl py-5 pl-14 pr-5 text-white font-mono text-sm focus:border-emerald-500/60 focus:shadow-[0_0_30px_rgba(16,185,129,0.08)] outline-none transition-all placeholder:text-zinc-700"
           />
         </div>
-        <Button onClick={handleLookup} disabled={loading || !address} variant="primary" className="px-8 whitespace-nowrap">
+        <Button onClick={handleLookup} disabled={loading || !address} variant="primary" className="px-10 py-5 whitespace-nowrap">
           {loading ? 'Scanning...' : 'Scan Ledger'}
         </Button>
-      </Card>
+      </div>
 
       {walletAddress && address !== walletAddress && (
         <div className="flex justify-center -mt-4">
-          <button onClick={() => setAddress(walletAddress)} className="text-sm text-zinc-500 hover:text-emerald-400 transition-colors flex items-center gap-2">
+          <button type="button" onClick={() => setAddress(walletAddress)} className="text-sm text-zinc-500 hover:text-emerald-400 transition-colors flex items-center gap-2">
             <User size={14} /> Load my connected wallet
           </button>
         </div>
