@@ -1,0 +1,12 @@
+# Rust
+target/
+Cargo.lock
+
+# Node
+node_modules/
+dist/
+build/
+.env
+
+# MacOS
+.DS_Store
