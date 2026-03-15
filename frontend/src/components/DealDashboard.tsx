@@ -3,7 +3,6 @@ import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol } from
 import { useToast } from '../App';
 import type { DealData } from '../hooks/useDealEscrow';
 import { getDealMetadata, recordMilestoneEvent, getAllDealEvents, formatEventDateTime, getEventLabel } from '../lib/dealMetadata';
-import type { MilestoneEvent } from '../lib/dealMetadata';
 
 /* ============================================
    Constants
@@ -93,8 +92,9 @@ function isParticipant(deal: DealData, wallet: string): boolean {
   return deal.client === wallet || deal.provider === wallet || deal.connector === wallet;
 }
 
+type ToastType = 'success' | 'error' | 'info';
 // Copy helper
-async function copyToClipboard(text: string, setCopied: (key: string) => void, key: string, toastFn?: (msg: string, type?: string) => void) {
+async function copyToClipboard(text: string, setCopied: (key: string) => void, key: string, toastFn?: (msg: string, type?: ToastType) => void) {
   try {
     await navigator.clipboard.writeText(text);
     setCopied(key);

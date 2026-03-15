@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { truncateAddress, formatAmount, getExplorerContractLink, getTokenSymbol, DEAL_ESCROW_CONTRACT } from '../lib/stellar';
+import { truncateAddress, formatAmount, getExplorerContractLink, DEAL_ESCROW_CONTRACT } from '../lib/stellar';
 import type { DealData } from '../hooks/useDealEscrow';
 
 // Soroban enums deserialize as arrays ["Created"] or objects { Active: [] } — normalize to string
