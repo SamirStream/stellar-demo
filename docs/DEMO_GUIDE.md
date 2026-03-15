@@ -24,14 +24,22 @@ Before starting, ensure you have:
 
 ---
 
-## Step 1: Connect Your Wallet
+## Step 1: Landing Page + Connect Wallet
 
-1. Open `http://localhost:5173`
-2. You'll see the **Connect Your Wallet** landing screen with feature highlights
-3. Click **Connect Wallet**
-4. The Stellar Wallets Kit modal appears — select your wallet (e.g., Freighter)
-5. Approve the connection in your wallet extension
-6. Your truncated address and balance appear in the top-right header
+Open `http://localhost:5173`. The landing page shows:
+
+- **"Trust Engine."** — Space Grotesk 900, always-on RGB glitch effect. Hover to pause it.
+- **Live Network Ticker** — full-width marquee showing real on-chain deal data from the contract (no wallet required). Emerald = completed, Blue = active, Amber = awaiting funding, Red = disputed.
+- **Connect Wallet** — opens the Stellar Wallets Kit modal
+- **Read the Docs** — links to the GitHub repo
+
+To connect:
+
+1. Click **Connect Wallet**
+2. The Stellar Wallets Kit modal appears — select your wallet (e.g., Freighter)
+3. Approve the connection in your wallet extension
+4. Your truncated address and XLM/USDC balances appear in the top-right header
+5. The Live Network Ticker disappears and the app tabs appear
 
 **What happens**: The app initializes a `StellarWalletsKit` instance with Freighter, xBull, and Albedo modules. On successful connection, it starts polling your XLM and USDC balances every 15 seconds.
 
@@ -39,7 +47,7 @@ Before starting, ensure you have:
 
 ## Step 2: Fund Your Wallet
 
-Navigate to the **Fund Wallet** tab (Step 1).
+Navigate to the **Liquidity** tab (`Alt+1`).
 
 ### Option A: Friendbot (Free 10,000 XLM)
 
@@ -47,7 +55,6 @@ Navigate to the **Fund Wallet** tab (Step 1).
 2. Wait for confirmation (1-2 seconds)
 3. A success toast appears: "Wallet funded with 10,000 XLM!"
 4. Your header balance updates to reflect the new XLM
-5. Click **Next: Create a Deal →** to proceed
 
 If your wallet was already funded, you'll see an info message instead: "Wallet already funded! You're ready to go."
 
@@ -66,7 +73,7 @@ If your wallet was already funded, you'll see an info message instead: "Wallet a
 
 ## Step 3: Create a Deal
 
-Navigate to the **Create Deal** tab (Step 2).
+Navigate to the **Deploy Contract** tab (`Alt+2`).
 
 ### Quick Start
 
@@ -92,7 +99,7 @@ Quick Start also fills in demo testnet addresses for the provider and connector.
 
 The **Split Preview** at the bottom shows how each milestone release will be distributed:
 
-```
+```text
 Example: 500 XLM deal, 10% platform fee, 40% connector share
 
 Provider receives:    90.0%  (450 XLM per milestone release)
@@ -108,7 +115,7 @@ Total:               100.0%
 3. Click **Create Deal on Stellar** to sign and submit
 4. Watch the **transaction progress indicator**: Signing → Submitting → Confirming
 5. On success, see the animated checkmark with your **Deal ID** and **transaction hash**
-6. Click **View Deal Dashboard** to manage the deal
+6. Click **View Deal Dashboard** to navigate to the Deals tab
 
 **What happens on-chain**: The `create_deal` contract function stores the deal with all participants, fee parameters, and milestone amounts. Each milestone starts in `Pending` status. The deal counter increments.
 
@@ -116,14 +123,33 @@ Total:               100.0%
 
 ## Step 4: Manage the Deal
 
-Navigate to the **My Deals** tab (Step 3). If you just created a deal, it auto-loads.
+Navigate to the **Deals** tab (`Alt+3`). If you just created a deal, it appears in the left panel.
+
+The Deals tab is a split-panel interface:
+
+- **Left panel**: Deal list with search bar, segmented filter tabs, and per-deal cards
+- **Right panel**: Full deal detail with milestone timeline, vault analytics, and event ledger
+
+### Filter Tabs
+
+The segmented filter bar at the top of the deal list:
+
+| Tab | Color | Shows |
+| --- | ----- | ----- |
+| All | Zinc | Every deal |
+| In Progress | Blue | Active deals with funded milestones |
+| Awaiting Funding | Amber | Created deals with no funded milestones |
+| Completed | Emerald | All milestones released |
+| Disputed | Red | At least one disputed milestone |
+| Cancelled | Zinc | Refunded deals |
 
 ### 4a. Fund a Milestone
 
-1. Find the first milestone showing **Pending** status
-2. Click **Fund** — the app checks your balance first
-3. Approve the token transfer in your wallet
-4. The milestone transitions to **Funded** and the deal becomes **Active**
+1. Select a deal from the left panel
+2. Find the first milestone showing **Pending** status
+3. Click **Fund** — the app checks your balance first
+4. Approve the token transfer in your wallet
+5. The milestone transitions to **Funded** and the deal becomes **Active**
 
 **What happens on-chain**: The `deposit` function executes a SAC `transfer()` from your wallet to the contract address. The tokens are held in escrow until released or refunded.
 
@@ -170,7 +196,7 @@ If you are the contract admin:
 
 ## Step 5: Check Reputation
 
-Navigate to the **Reputation** tab (Step 4).
+Navigate to the **Oracle** tab (`Alt+4`).
 
 1. Your wallet address is pre-filled
 2. Click **Lookup** to query the on-chain reputation
@@ -206,13 +232,15 @@ After completing the full flow, verify:
 ## Common Scenarios to Demonstrate
 
 ### Scenario 1: Happy Path (2 minutes)
+
 1. Quick Start → "Security Audit"
 2. Create deal
 3. Fund all 3 milestones
 4. Release milestones 1, 2, 3
-5. Check reputation → shows 1 completed deal
+5. Check Oracle tab → shows 1 completed deal
 
 ### Scenario 2: Dispute Resolution (3 minutes)
+
 1. Quick Start → "Dev Sprint"
 2. Create deal
 3. Fund milestone 1
@@ -223,9 +251,10 @@ After completing the full flow, verify:
 8. Verify partial refund to client
 
 ### Scenario 3: Multiple Deals + Reputation (3 minutes)
+
 1. Create 2 simple deals (1 milestone each)
 2. Fund and release both
-3. Check reputation → shows 2
+3. Check Oracle tab → shows 2
 4. Demonstrate that reputation counter is cumulative and on-chain
 
 ---
@@ -234,11 +263,13 @@ After completing the full flow, verify:
 
 | Shortcut | Action |
 |----------|--------|
-| `Alt+1` | Switch to Fund Wallet tab |
-| `Alt+2` | Switch to Create Deal tab |
-| `Alt+3` | Switch to My Deals tab |
-| `Alt+4` | Switch to Reputation tab |
+| `Alt+1` | Switch to Liquidity tab |
+| `Alt+2` | Switch to Deploy Contract tab |
+| `Alt+3` | Switch to Deals tab |
+| `Alt+4` | Switch to Oracle tab |
 | `Escape` | Close confirmation modals |
+
+Only active when wallet is connected.
 
 ---
 
@@ -247,10 +278,11 @@ After completing the full flow, verify:
 | Issue | Solution |
 |-------|----------|
 | "Wallet not connected" | Click Connect Wallet in the header. Ensure your wallet extension is set to Testnet. |
-| "Insufficient balance" | Go to Fund Wallet tab and use Friendbot to get 10,000 XLM. |
+| "Insufficient balance" | Go to the Liquidity tab and use Friendbot to get 10,000 XLM. |
 | "Transaction cancelled by user" | You declined the signing prompt in your wallet extension. Try the action again. |
 | "Transaction confirmation timed out" | The Stellar network may be congested. Check Stellar Explorer for your transaction status. |
 | "Transaction simulation failed" | The contract rejected the operation. Ensure the milestone is in the correct state (e.g., must be Funded before Release). |
-| Friendbot returns "already funded" | Your wallet already has XLM. This is not an error — proceed to Create Deal. |
+| Friendbot returns "already funded" | Your wallet already has XLM. This is not an error — proceed to Deploy Contract. |
 | Soroswap quote fails | Testnet liquidity pools may be empty. Use XLM directly as the payment token instead. |
 | Balance shows 0 after Friendbot | Wait a few seconds for the balance refresh (every 15s), or switch tabs to trigger a refresh. |
+| Live Ticker not showing | The ticker requires at least one on-chain deal. Create a deal first, then reload the landing page. |

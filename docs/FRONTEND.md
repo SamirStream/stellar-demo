@@ -2,27 +2,96 @@
 
 ## Overview
 
-The frontend is a React 19 single-page application built with TypeScript 5.9 and Vite 8. It provides a complete interface for interacting with the DealEscrow smart contract on Stellar Testnet — from wallet connection through deal creation, milestone management, and reputation lookup.
+The frontend is a React 19 single-page application built with TypeScript 5.9, Vite 8, and Tailwind CSS v4. It provides a complete interface for interacting with the DealEscrow smart contract on Stellar Testnet — from the landing page through wallet connection, deal creation, milestone management, and reputation lookup.
 
 **No backend required.** All interactions happen directly between the browser and Stellar's Soroban RPC via the `@stellar/stellar-sdk`.
 
 ## Component Architecture
 
-```
+```text
 App.tsx (Root)
-├── ToastContainer         — Global notification system
+├── GlowingBackground          — Animated ambient background (fixed, z-0)
+├── ToastContainer             — Global notification system
+├── LiveTicker                 — Real-time on-chain marquee (homepage only)
 ├── Header
-│   ├── Logo
-│   ├── Testnet Badge
-│   └── ConnectWallet      — Multi-wallet connection UI
-├── Tab Navigation         — Step-based flow (Fund → Create → Dashboard → Reputation)
-├── Tab Content
-│   ├── SoroswapWidget     — Friendbot funding + XLM→USDC swap
-│   ├── CreateDeal         — Deal creation form with review step
-│   ├── DealDashboard      — Full deal lifecycle management
-│   └── ReputationBadge    — On-chain reputation lookup
-└── Footer                 — Explorer links
+│   ├── SignalLogo             — logo.png, click-to-home when connected
+│   ├── "THE SIGNAL" wordmark  — Space Grotesk 800, font-display class
+│   └── ConnectWallet / Nav    — Wallet info + tab navigation when connected
+├── LandingView (when disconnected)
+│   ├── "Trust Engine." hero   — Glitch effect, always-on RGB aberration
+│   ├── Connect Wallet CTA     — Opens Stellar Wallets Kit modal
+│   └── Read the Docs CTA      — Links to GitHub repo
+└── App Tabs (when connected)
+    ├── Liquidity              — SoroswapWidget (Friendbot + XLM→USDC)
+    ├── Deploy Contract        — CreateDeal (form + review + success)
+    ├── Deals                  — DealDashboard (split-panel lifecycle)
+    └── Oracle                 — ReputationBadge (on-chain reputation)
 ```
+
+## Design System
+
+### Tailwind CSS v4
+
+Styling uses Tailwind v4 with custom properties defined in `src/index.css` via the `@theme` block (no `tailwind.config.js`):
+
+```css
+@theme {
+  --animate-marquee: marquee 120s linear infinite;
+  --animate-radar: radar 3s linear infinite;
+  --animate-pulse-ring: pulse-ring 2s ease-in-out infinite;
+  /* ... additional custom animations */
+}
+```
+
+### Typography
+
+| Usage | Font | Weight | Class |
+|-------|------|--------|-------|
+| "THE SIGNAL" header | Space Grotesk | 800 | `.font-display` |
+| "Trust Engine." hero | Space Grotesk | 900 (font-black) | `font-black` |
+| Code / addresses | JetBrains Mono | 400 | `font-mono` |
+| Body | Inter | 400 | default |
+
+Space Grotesk is loaded from Google Fonts with weights 700 and 800. JetBrains Mono and Inter are loaded via the same stylesheet.
+
+### Glitch Effect
+
+The "Trust Engine." heading uses a CSS-only RGB chromatic aberration effect defined in `@layer base`:
+
+- **Always active** — `::before` (red layer) and `::after` (cyan layer) run two desynchronized keyframe animations (`glitch-1` at 4s, `glitch-2` at 3.5s)
+- **Organic bursts** — Animations use `steps(1)` and have long quiet periods (85% of cycle is invisible) with sudden clip-path bursts
+- **`mix-blend-mode: screen`** — Layers blend with white text for true chromatic aberration rather than plain text-shadow offsets
+- **Hover pauses** — `::before` and `::after` set to `clip-path: inset(0 0 100% 0)` on hover, cleanly freezing the effect
+
+### Shared UI Components
+
+**`src/components/ui/Components.tsx`**
+
+| Component | Props | Description |
+|-----------|-------|-------------|
+| `Card` | `className`, `hoverEffect`, `glowOnHover`, `onClick` | Dark bordered container with internal `relative z-10 h-full` wrapper. Apply flex/centering on inner content, not the Card itself. |
+| `Button` | `variant`, `icon`, `disabled`, `onClick` | `primary` (emerald gradient) or `secondary` (zinc border). |
+| `Tag` | `color` | Colored status badge: `emerald`, `amber`, `blue`, `red`, `zinc`. |
+
+**`src/components/ui/Branding.tsx`**
+
+| Component | Description |
+|-----------|-------------|
+| `SignalLogo` | Renders `public/logo.png` with configurable `className`. No glow effects. |
+| `GlowingBackground` | Fixed full-screen layer: deep black base, architectural grid, emerald neon orbs, CRT scanline texture. |
+
+### Live Network Ticker
+
+**`App.tsx` — `LiveTicker` component**
+
+A full-width marquee bar showing real on-chain deal data:
+
+- **Read-only fetch on mount** — Calls `getDealCount()` and `getDeal()` via `useDealEscrow` without requiring wallet authentication (view functions are permissionless on Soroban)
+- **Homepage only** — Hidden when `wallet.isConnected`. Disappears when the user connects and enters the app.
+- **No fallback data** — If the chain is unreachable or there are no deals, the ticker is simply hidden
+- **Data per deal**: Contract ID, status label (`ESCROW_ACTIVE`, `DEAL_COMPLETED`, etc.), total amount, plus per-milestone entries for funded/released milestones
+- **Color coding**: Emerald = completed/released, Blue = active/funded, Amber = awaiting funding, Red = disputed
+- **Scroll speed**: 120s per full cycle (very slow, cinematic)
 
 ## Custom Hooks
 
@@ -46,19 +115,17 @@ interface WalletState {
 ```
 
 **Key features**:
-- **Multi-wallet support**: Initializes Freighter, xBull, and Albedo modules. Users select their wallet via the Stellar Wallets Kit auth modal.
-- **Auto-refresh balances**: Polls XLM and USDC balances every 15 seconds using ref-based intervals to avoid stale closures and unnecessary interval restarts.
-- **Error-categorized signing**: The `signTransaction` wrapper catches wallet errors and provides user-friendly messages:
-  - User rejection (cancel/reject/denied) → "Transaction cancelled by user."
-  - Wallet unavailable → "Wallet not available. Please reconnect."
-  - Other errors → "Signing failed: {message}"
-- **Event-driven state**: Listens to `STATE_UPDATED` and `DISCONNECT` events from the wallet kit for reactive UI updates.
+- **Multi-wallet support**: Initializes Freighter, xBull, and Albedo modules. Users select via the Stellar Wallets Kit auth modal.
+- **Auto-refresh balances**: Polls XLM and USDC balances every 15 seconds using ref-based intervals.
+- **Error-categorized signing**: Catches wallet errors and provides user-friendly messages (cancelled, unavailable, or generic failure).
+- **Event-driven state**: Listens to `STATE_UPDATED` and `DISCONNECT` events from the wallet kit.
+- **Disconnect resets app**: `disconnect()` clears address + balances, returning the user to the landing page (logo click when connected also calls `disconnect()`).
 
 ### `useDealEscrow`
 
 **File**: `src/hooks/useDealEscrow.ts`
 
-Provides all contract interaction methods with robust error handling and transaction lifecycle management.
+All contract interaction methods with robust error handling and transaction lifecycle management.
 
 ```typescript
 function useDealEscrow(walletAddress: string, signTransaction: Function) {
@@ -68,8 +135,9 @@ function useDealEscrow(walletAddress: string, signTransaction: Function) {
     releaseMilestone,   // Execute atomic 3-way split
     dispute,            // Freeze a funded milestone
     resolveDispute,     // Admin: resolve with configurable refund %
-    getDeal,            // Read deal state (simulation only, no signing)
-    getReputation,      // Read provider reputation (simulation only)
+    getDeal,            // Read deal state (simulation, no signing)
+    getReputation,      // Read provider reputation (simulation, no signing)
+    getDealCount,       // Read total deal count (simulation, no signing)
     contractId,         // Current contract address
   };
 }
@@ -77,7 +145,7 @@ function useDealEscrow(walletAddress: string, signTransaction: Function) {
 
 **Transaction pipeline** (`submitContractCall`):
 
-```
+```text
 1. Build Transaction
    └── TransactionBuilder with 1 XLM max fee, 120s timeout
 
@@ -100,15 +168,10 @@ function useDealEscrow(walletAddress: string, signTransaction: Function) {
 ```
 
 **Safety mechanisms**:
-- **Transaction mutex**: A `useRef` boolean prevents concurrent transactions. Rapid double-clicks on action buttons will not fire duplicate transactions.
-- **Confirmation timeout**: The polling loop has a hard limit of 30 retries (60 seconds). If confirmation doesn't arrive, the user is directed to check Stellar Explorer rather than hanging indefinitely.
-- **Friendly error messages**: Soroban simulation errors are parsed and translated from raw JSON into actionable messages (e.g., "Insufficient balance", "Transaction too expensive", "This action was already performed").
-- **Deal ID extraction fallback**: After `create_deal`, the hook checks both `returnValue` and `resultMetaXdr.v3.sorobanMeta.returnValue` to extract the deal ID. If extraction fails on a successful transaction, it throws with the transaction hash for manual verification.
-
-**Read-only operations** (`getDeal`, `getReputation`):
-- Use transaction simulation only — no signing or submission required
-- Lower fees (100 stroops) and shorter timeouts (30s)
-- Gracefully return `null` or `0` on failure
+- **Transaction mutex**: `useRef` boolean prevents concurrent/double-click transactions
+- **Confirmation timeout**: Hard limit of 30 retries (60 seconds)
+- **Friendly error messages**: Soroban simulation errors translated to actionable messages
+- **Deal ID extraction fallback**: Checks both `returnValue` and `resultMetaXdr.v3.sorobanMeta.returnValue`
 
 ## Components
 
@@ -116,220 +179,124 @@ function useDealEscrow(walletAddress: string, signTransaction: Function) {
 
 **File**: `src/components/ConnectWallet.tsx`
 
-Minimal wallet connection UI displayed in the header. Shows:
-- "Connect Wallet" button when disconnected
-- Truncated address with green status dot when connected
-- Formatted XLM balance (with thousands separators: "10,000.00 XLM")
-- USDC balance when non-zero
-- Disconnect button
+Wallet connection button displayed in the header when disconnected. Opens the Stellar Wallets Kit modal to select Freighter, xBull, or Albedo.
 
 ### SoroswapWidget
 
 **File**: `src/components/SoroswapWidget.tsx`
 
-Two-part funding interface:
+Two-part funding interface (Liquidity tab):
 
-**Section 1 — Friendbot Funding**:
-- One-click testnet XLM funding (10,000 XLM)
-- Detects "already funded" responses and shows an informational message instead of an error
-- Triggers balance refresh in the header after funding
-- Provides "Next: Create a Deal" navigation button on success
+**Section 1 — Friendbot**: One-click 10,000 XLM testnet funding with duplicate-funding detection.
 
-**Section 2 — Soroswap DEX Integration**:
-- Quote → Sign → Swap workflow for XLM→USDC conversion
-- Powered by the Soroswap Aggregator API (multi-protocol routing: Soroswap, Phoenix, Aqua)
-- Shows exchange rate and slippage tolerance (1%)
-- Graceful degradation: warns users that testnet liquidity may be limited and suggests using XLM directly
-
-**Balance display**: Shows current XLM balance at the top of the tab so users can assess whether they need to fund.
+**Section 2 — Soroswap DEX**: Quote → Sign → Swap for XLM→USDC via the Soroswap Aggregator API (multi-protocol routing: Soroswap, Phoenix, Aqua). 1% slippage tolerance.
 
 ### CreateDeal
 
 **File**: `src/components/CreateDeal.tsx`
 
-Multi-step deal creation form:
+Three-step deal creation:
 
-**Step 1 — Configuration**:
-- Provider and Connector address inputs with real-time Stellar address validation (G... format, 56 characters)
-- Payment token selection (XLM or USDC)
-- Total amount input
-- Platform fee percentage (1-50%)
-- Connector share percentage (0-100% of platform fee)
-- Dynamic milestone editor (add/remove milestones, percentages must sum to 100%)
-- Live split preview showing Provider/Connector/Protocol percentages
+**Step 1 — Configuration**: Provider/Connector address inputs (real-time G-address validation), token selection, total amount, fee percentages, dynamic milestone editor (percentages must sum to 100%), live split preview.
 
-**Step 2 — Review**:
-- Summary of all deal parameters before signing
-- Milestone amounts calculated from percentages
-- Split preview with exact amounts per party
-- Transaction progress indicator (Signing → Submitting → Confirming)
+**Step 2 — Review**: Full deal summary before signing. Transaction progress: Signing → Submitting → Confirming.
 
-**Step 3 — Confirmation**:
-- Animated success checkmark
-- Deal ID and transaction hash with Explorer link
-- "View Deal Dashboard" button (auto-navigates to dashboard with the new deal loaded)
+**Step 3 — Success**: Centered animated checkmark, Deal ID, transaction hash, Explorer link, "View Deal Dashboard" navigation.
 
-**Quick Start scenarios**: Three pre-configured demo scenarios (Security Audit, Dev Sprint, Advisory Retainer) that populate the form with realistic parameters for quick testing.
-
-**Validations**:
-- Stellar address format validation
-- All milestone percentages must be > 0%
-- Milestone percentages must sum to exactly 100%
-- Total amount must be > 0
-- Token address must be configured
+**Quick Start scenarios**: Security Audit (500 XLM / 3 milestones), Dev Sprint (1,200 XLM / 2 milestones), Advisory Retainer (3,000 XLM / 4 milestones). Auto-fills demo testnet addresses.
 
 ### DealDashboard
 
 **File**: `src/components/DealDashboard.tsx`
 
-Full deal lifecycle management with real-time updates:
+Split-panel deal lifecycle management:
 
-**Deal Loading**:
-- Manual deal ID input with "Load Deal" button (no auto-fetch on keystroke to avoid unnecessary API calls)
-- Auto-loads when navigated from Create Deal with a new deal ID
-- Loading skeleton animation during fetch
-- Empty state with "Create a Deal" CTA button
+**Left panel — Deal List**:
+- Search bar with clear button (×), dynamic icon color, and result counter showing `N results for "query"`
+- Segmented filter tabs (`All` / `In Progress` / `Awaiting Funding` / `Completed` / `Disputed` / `Cancelled`) — pill-track container with color-coded active states and status dots
+- Per-deal cards: title, status tag, total amount, milestone progress, role badge (Client/Provider/Connector)
+- Auto-refresh every 30 seconds via ref-based interval
 
-**Deal Overview**:
-- Color-coded status badge (Awaiting Funding / In Progress / Completed / Disputed / Cancelled)
-- Total amount display with token symbol
-- Escrow protection indicator (shield icon) for active deals
-- "Updated Xs ago" timestamp indicator
-- Participant addresses with copy-to-clipboard functionality
-- "You" badge next to the connected wallet's role
-- Platform fee and connector share percentages
+**Right panel — Deal Detail**:
+- Empty state: centered Activity icon + "Select a Contract" prompt (uses inner flex wrapper to bypass Card's internal wrapper)
+- Deal header: status badge, escrow protection indicator, title, Deal ID copy, participant addresses with "YOU" badge, fee breakdown
+- Milestone timeline: numbered nodes, color-coded status, context-aware action buttons
+- 3-Way Split Visualization: animated bar chart after release, exact amounts + percentages per party
+- Vault Analytics sidebar: Unlocked / Secured / Pending amounts
+- Event Ledger sidebar: chronological milestone events with transaction trace links
 
-**Milestone Timeline**:
-- Visual timeline with numbered nodes and connecting lines
-- Color-coded milestone status badges
-- Context-aware action buttons based on role and milestone state:
-  - **Client + Pending**: "Fund" button (with balance check)
-  - **Client + Funded**: "Approve & Release" and "Dispute" buttons
-  - **Provider + Funded**: "Dispute" button
-  - **Disputed**: "Resolve" button (admin)
-  - **Released**: Green checkmark "Paid" indicator
-
-**3-Way Split Visualization**:
-- After releasing a milestone, displays an animated bar chart showing the Provider/Connector/Protocol split
-- Shows exact amounts and percentages for each party
-- Links to Stellar Explorer to verify the atomic transaction
-
-**Confirmation Modals**:
-- **Release confirmation**: Shows the exact 3-way split amounts before execution. "This action is irreversible."
-- **Dispute confirmation**: Explains that disputed milestones are frozen until admin resolution
-- **Resolve dispute**: Interactive slider (0-100%) to set client refund percentage, with real-time preview of client refund and provider payout amounts
-- All modals support ESC key dismiss, backdrop click dismiss, and scroll locking
-
-**Balance Protection**: Before depositing, checks the connected wallet's XLM balance against the milestone amount. Shows "Insufficient balance" error with a "Fund Wallet" navigation button.
-
-**Auto-refresh**: Polls the contract every 15 seconds when a deal is loaded, using ref-based intervals for stable polling.
+**Confirmation modals**:
+- Release: shows exact 3-way split before execution
+- Dispute: freeze warning
+- Resolve: interactive 0-100% slider with real-time client/provider preview
+- All modals: ESC dismiss, backdrop click dismiss, scroll lock
 
 ### ReputationBadge
 
 **File**: `src/components/ReputationBadge.tsx`
 
-On-chain reputation lookup with visual feedback:
-
-- Address input pre-filled with connected wallet
-- "Use My Address" quick-fill button
-- Animated count-up display (easeOutCubic easing)
-- Tiered badge system:
-  - 0 deals: "New Provider"
-  - 1+ deals: "Verified Provider"
-  - 5+ deals: "Trusted Provider"
-  - 10+ deals: "Elite Provider"
-- Loading skeleton during lookup
-- Link to contract on Stellar Explorer
+On-chain reputation lookup with radar animation and animated count-up display. Badge tiers: New Provider (0) → Verified (1+) → Trusted (5+) → Elite (10+).
 
 ## Library Modules
 
 ### stellar.ts
 
-**File**: `src/lib/stellar.ts`
+Core Stellar SDK configuration and utilities:
 
-Core Stellar SDK configuration and utility functions:
-
-| Export | Type | Description |
-|--------|------|-------------|
-| `NETWORK_PASSPHRASE` | const | Stellar Testnet passphrase |
-| `SOROBAN_RPC_URL` | const | `https://soroban-testnet.stellar.org` |
-| `XLM_SAC_ADDRESS` | const | Native XLM wrapped as Stellar Asset Contract |
-| `USDC_TOKEN_ADDRESS` | const | From `VITE_USDC_TOKEN_ADDRESS` env var |
-| `DEAL_ESCROW_CONTRACT` | const | From `VITE_DEAL_ESCROW_CONTRACT` env var |
-| `DEMO_ACCOUNTS` | object | Pre-generated testnet provider and connector addresses |
-| `sorobanServer` | instance | Soroban RPC Server connection |
-| `horizonServer` | instance | Horizon Server connection |
-| `fundTestnetAccount()` | function | Friendbot XLM funding |
-| `getXlmBalance()` | function | Native XLM balance via Horizon |
-| `getTokenBalance()` | function | SAC token balance via Soroban simulation |
-| `formatAmount()` | function | 7-decimal to human-readable conversion |
-| `toContractAmount()` | function | Human-readable to 7-decimal BigInt conversion |
-| `isValidStellarAddress()` | function | G-address format validation (regex) |
-| `truncateAddress()` | function | `GABCD...WXYZ` display format |
+| Export | Description |
+|--------|-------------|
+| `SOROBAN_RPC_URL` | `https://soroban-testnet.stellar.org` |
+| `XLM_SAC_ADDRESS` | Native XLM as Stellar Asset Contract |
+| `DEAL_ESCROW_CONTRACT` | From `VITE_DEAL_ESCROW_CONTRACT` |
+| `DEMO_ACCOUNTS` | Pre-generated provider/connector testnet addresses |
+| `sorobanServer` | Soroban RPC Server instance |
+| `horizonServer` | Horizon Server instance |
+| `formatAmount()` | 7-decimal to human-readable |
+| `toContractAmount()` | Human-readable to 7-decimal BigInt |
+| `isValidStellarAddress()` | G-address regex validation |
+| `truncateAddress()` | `GABCD...WXYZ` display format |
 
 ### soroswap.ts
 
-**File**: `src/lib/soroswap.ts`
+Soroswap DEX Aggregator API client with `getQuote()`, `buildTransaction()`, `sendTransaction()` methods. API key via `VITE_SOROSWAP_API_KEY`.
 
-Soroswap DEX Aggregator API client:
+### dealMetadata.ts
 
-```typescript
-class SoroswapClient {
-  getQuote(assetIn, assetOut, amount)    // Step 1: Get swap quote
-  buildTransaction(quote, fromAddress)    // Step 2: Build signable XDR
-  sendTransaction(signedXdr)              // Step 3: Submit signed swap
-}
-```
-
-- Routes through multiple DEX protocols: Soroswap, Phoenix, Aqua
-- 1% default slippage tolerance
-- API key authentication via `VITE_SOROSWAP_API_KEY` env var
+Local (localStorage) milestone naming and event log. Stores custom milestone names and records funded/released/disputed events per deal for the Event Ledger sidebar.
 
 ## UX Patterns
 
 ### Toast Notification System
 
-Global toast system via React Context:
+React Context-based global toasts. Three types: `success`, `error`, `info`. Auto-dismiss after 3s, click to dismiss. Max 3 concurrent. Accessible via `aria-live="polite"`.
 
-- Three types: `success` (green), `error` (red), `info` (blue)
-- Auto-dismiss after 3 seconds with exit animation
-- Click to dismiss immediately
-- Maximum 3 concurrent toasts (oldest are removed when limit is exceeded)
-- Accessible via `aria-live="polite"` region
+### Transaction Progress
 
-### Transaction Progress Tracking
-
-Multi-step progress indicator shown during contract interactions:
-
-```
+```text
 [Signing] → [Submitting] → [Confirming]
 ```
 
-Each step lights up as the transaction progresses through the pipeline. Gives users confidence that the app is working during the ~5-10 second confirmation wait.
-
-### Loading Skeletons
-
-Shimmer-animated placeholder UI shown while data loads:
-- Deal dashboard: circle + line skeletons mimicking deal layout
-- Reputation badge: centered circle + line skeletons
+Step indicator during the ~5-10 second confirmation window.
 
 ### Keyboard Navigation
 
-- **Alt+1/2/3/4**: Quick tab switching (Fund/Create/Dashboard/Reputation)
-- **Escape**: Dismiss confirmation modals
-- Only active when wallet is connected
+| Shortcut | Action |
+|----------|--------|
+| `Alt+1` | Liquidity tab |
+| `Alt+2` | Deploy Contract tab |
+| `Alt+3` | Deals tab |
+| `Alt+4` | Oracle tab |
+| `Escape` | Close confirmation modals |
 
-### Scroll-Reactive Header
-
-Header applies a subtle visual change (blur/shadow) when the page is scrolled, providing depth without distraction.
+Only active when wallet is connected.
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `VITE_DEAL_ESCROW_CONTRACT` | Yes | Deployed DealEscrow contract address |
-| `VITE_USDC_TOKEN_ADDRESS` | No | Testnet USDC SAC address (for swap feature) |
-| `VITE_SOROSWAP_API_KEY` | No | Soroswap Aggregator API key (for swap feature) |
+| `VITE_USDC_TOKEN_ADDRESS` | No | Testnet USDC SAC address |
+| `VITE_SOROSWAP_API_KEY` | No | Soroswap Aggregator API key |
 
 ## Build and Development
 
@@ -337,18 +304,18 @@ Header applies a subtle visual change (blur/shadow) when the page is scrolled, p
 cd frontend
 npm install
 npm run dev      # Development server on :5173
-npm run build    # Production build to dist/
+npm run build    # TypeScript check + Vite production build
 npm run preview  # Preview production build
 ```
 
-### Dependencies
+## Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `react` | 19.x | UI framework |
 | `@stellar/stellar-sdk` | 14.6.1 | Stellar/Soroban interaction |
 | `@creit.tech/stellar-wallets-kit` | 2.0.1 | Multi-wallet connection |
+| `lucide-react` | 0.577+ | Icon library |
+| `tailwindcss` | 4.2.x | Utility-first CSS (v4) |
 | `typescript` | 5.9 | Type safety |
 | `vite` | 8.0 | Build tool |
-
-Zero additional UI dependencies — all styling is custom CSS, all icons are inline SVG.

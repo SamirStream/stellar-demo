@@ -112,9 +112,31 @@ The contract emits events for every state change, enabling off-chain indexing:
 
 ## Frontend Architecture
 
+### Component Hierarchy
+
+```text
+App.tsx (Root)
+├── GlowingBackground          — Fixed ambient background (grid + orbs + scanlines)
+├── ToastContainer             — Global notification system (3 max, 3s auto-dismiss)
+├── LiveTicker                 — Real-time on-chain marquee (homepage only, no auth)
+├── Header
+│   ├── SignalLogo             — logo.png, click-to-home when connected
+│   ├── "THE SIGNAL" wordmark  — Space Grotesk 800, font-display class
+│   └── ConnectWallet / Nav    — Wallet info + tab navigation when connected
+├── LandingView (when disconnected)
+│   ├── "Trust Engine." hero   — Glitch effect, always-on RGB aberration
+│   ├── Connect Wallet CTA     — Opens Stellar Wallets Kit modal
+│   └── Read the Docs CTA      — Links to GitHub repo
+└── App Tabs (when connected)
+    ├── Liquidity              — SoroswapWidget (Friendbot + XLM→USDC)
+    ├── Deploy Contract        — CreateDeal (form + review + success)
+    ├── Deals                  — DealDashboard (split-panel lifecycle)
+    └── Oracle                 — ReputationBadge (on-chain reputation)
+```
+
 ### Layer Structure
 
-```
+```text
 Components (UI)
      │
      ▼
