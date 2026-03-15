@@ -19,7 +19,7 @@ const DEMO_SCENARIOS = [
       { name: 'Final Remediation Check', percentage: 20 },
     ],
     platformFee: 10,
-    connectorShare: 40,
+    connectorShare: 50,
   },
   {
     name: 'Dev Sprint',
@@ -29,7 +29,7 @@ const DEMO_SCENARIOS = [
       { name: 'Frontend Implementation', percentage: 50 },
       { name: 'Backend + Integration', percentage: 50 },
     ],
-    platformFee: 8,
+    platformFee: 10,
     connectorShare: 50,
   },
   {
@@ -42,8 +42,8 @@ const DEMO_SCENARIOS = [
       { name: 'Launch Support', percentage: 25 },
       { name: 'Post-Launch Review', percentage: 25 },
     ],
-    platformFee: 15,
-    connectorShare: 30,
+    platformFee: 10,
+    connectorShare: 50,
   },
 ];
 
@@ -68,7 +68,7 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
   const [totalAmount, setTotalAmount] = useState(500);
   const [paymentToken, setPaymentToken] = useState<'XLM' | 'USDC'>('XLM');
   const [platformFee, setPlatformFee] = useState(10);
-  const [connectorShare, setConnectorShare] = useState(40);
+  const [connectorShare, setConnectorShare] = useState(50);
   const [milestones, setMilestones] = useState<MilestoneInput[]>([
     { name: 'Initial Code Review', percentage: 30 },
     { name: 'Vulnerability Report', percentage: 50 },
@@ -461,12 +461,12 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
               type="number"
               value={platformFee}
               onChange={(e) => setPlatformFee(Number(e.target.value))}
-              min={1}
-              max={50}
+              min={10}
+              max={100}
               required
               aria-label="Platform fee percentage"
             />
-            <span className="field-hint">Total fee deducted from each milestone release</span>
+            <span className="field-hint">Total fee deducted from each milestone release (min 10%)</span>
           </div>
 
           <div className="form-group">
@@ -475,12 +475,12 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
               type="number"
               value={connectorShare}
               onChange={(e) => setConnectorShare(Number(e.target.value))}
-              min={0}
-              max={100}
+              min={30}
+              max={50}
               required
               aria-label="Connector share percentage"
             />
-            <span className="field-hint">Connector's portion of the platform fee</span>
+            <span className="field-hint">Connector's portion of the platform fee (30% to 50%)</span>
           </div>
         </div>
 

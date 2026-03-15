@@ -305,7 +305,8 @@ export function DealDashboard({
         .filter((r): r is PromiseFulfilledResult<DealWithId | null> =>
           r.status === 'fulfilled' && r.value !== null
         )
-        .map((r) => r.value!);
+        .map((r) => r.value!)
+        .sort((a, b) => b.id - a.id);
 
       setAllDeals(deals);
     } catch (err: any) {
