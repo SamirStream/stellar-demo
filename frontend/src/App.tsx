@@ -1,10 +1,10 @@
 import { useState, useCallback, useContext, createContext, useRef, useEffect } from 'react';
 import {
-  Award, FileText,
+  Award,
   Zap, ArrowRightLeft,
   Coins, Plus,
   Network, Cpu, Lock,
-  TerminalSquare, Activity
+  TerminalSquare, Activity, Globe2
 } from 'lucide-react';
 import { useStellarWallet } from './hooks/useStellarWallet';
 import { useDealEscrow } from './hooks/useDealEscrow';
@@ -123,32 +123,36 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
 // Note: Kept the onConnect prop slightly different as it handles the logic
 const LandingView = ({ onConnect }: { onConnect: () => void }) => (
   <div className="flex flex-col items-center justify-center min-h-[85vh] text-center px-4 animate-fade-in relative z-10 pt-10">
-    <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-900/50 border border-emerald-500/20 text-emerald-400 mb-10 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.1)] hover:border-emerald-500/50 transition-colors cursor-default">
+    <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-900/50 border border-emerald-500/20 text-emerald-400 mb-12 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.1)] hover:border-emerald-500/50 transition-colors cursor-default">
       <span className="relative flex h-3 w-3 mr-1">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
         <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
       </span>
-      <span className="text-sm font-bold tracking-widest uppercase">Soroban Testnet Live</span>
+      <span className="text-[10px] font-black tracking-[0.3em] uppercase">Stellar Soroban Testnet V2.1</span>
     </div>
-    
-    <h1 className="text-6xl md:text-8xl font-black text-white mb-8 tracking-tighter leading-[1.1]">
-      Programmable <br /> 
-      <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-200 drop-shadow-[0_0_30px_rgba(52,211,153,0.4)]">
-        Trust Layer
-      </span>
-    </h1>
-    
-    <p className="text-xl text-zinc-400 max-w-3xl mb-14 leading-relaxed font-light">
-      Execute complex multi-party agreements with atomic fee routing, milestone locks, and cryptographically verified reputation. <span className="text-white font-medium">Code is the new law.</span>
+
+    <div className="glitch-wrapper relative mb-10">
+      <h1
+        className="glitch-text text-[4.5rem] sm:text-[6rem] md:text-[8rem] lg:text-[10rem] font-black text-white tracking-tighter leading-[0.9]"
+        data-text="Trust Engine."
+      >
+        Trust Engine.
+      </h1>
+    </div>
+
+    <p className="text-xl text-zinc-400 max-w-2xl mb-14 leading-relaxed font-light">
+      Execute autonomous multi-party escrows with atomic fee routing and cryptographic milestone locks.{' '}
+      <span className="text-white font-medium border-b border-zinc-600 pb-0.5">Code is Law.</span>
     </p>
 
-    <div className="flex flex-col sm:flex-row gap-6 mb-32">
-      <Button onClick={onConnect} variant="primary" className="text-lg px-10 py-5 w-full sm:w-auto" icon={TerminalSquare}>
-        Connect Wallet
+    <div className="flex flex-col sm:flex-row gap-6 mb-32 relative">
+      <div className="absolute -inset-6 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none"></div>
+      <Button onClick={onConnect} variant="primary" className="px-10 py-5 w-full sm:w-auto relative z-10" icon={TerminalSquare}>
+        Initialize Terminal
       </Button>
-      <a href="https://github.com/SamirStream/stellar-demo" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
-        <Button variant="secondary" className="text-lg px-10 py-5 w-full h-full" icon={FileText}>
-          Read Documentation
+      <a href="https://stellar.expert/explorer/testnet" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto relative z-10">
+        <Button variant="secondary" className="px-10 py-5 w-full h-full" icon={Globe2}>
+          View Explorer
         </Button>
       </a>
     </div>
@@ -272,13 +276,28 @@ export default function App() {
         <header className="relative z-50 border-b border-zinc-800/80 bg-[#02040a]/80 backdrop-blur-2xl sticky top-0">
           <div className="max-w-[90rem] mx-auto px-6 h-24 flex items-center justify-between">
             {/* Logo */}
-            <a href="https://thesignal.directory" target="_blank" rel="noopener noreferrer" className="flex items-center gap-5 cursor-pointer group">
-              <SignalLogo className="w-12 h-12" />
-              <div className="flex flex-col">
-                <span className="font-display text-3xl text-white group-hover:text-emerald-400 transition-colors leading-none">THE SIGNAL</span>
-                <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.3em] mt-1">Decentralized Escrow</span>
-              </div>
-            </a>
+            {wallet.isConnected ? (
+              <button
+                type="button"
+                onClick={wallet.disconnect}
+                title="Go to homepage"
+                className="flex items-center gap-5 cursor-pointer group"
+              >
+                <SignalLogo className="w-12 h-12" />
+                <div className="flex flex-col">
+                  <span className="font-display text-3xl text-white group-hover:text-emerald-400 transition-colors leading-none">THE SIGNAL</span>
+                  <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.3em] mt-1">Decentralized Escrow</span>
+                </div>
+              </button>
+            ) : (
+              <a href="https://thesignal.directory" target="_blank" rel="noopener noreferrer" className="flex items-center gap-5 cursor-pointer group">
+                <SignalLogo className="w-12 h-12" />
+                <div className="flex flex-col">
+                  <span className="font-display text-3xl text-white group-hover:text-emerald-400 transition-colors leading-none">THE SIGNAL</span>
+                  <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.3em] mt-1">Decentralized Escrow</span>
+                </div>
+              </a>
+            )}
 
             {/* Navigation / Wallet Connect */}
             {wallet.isConnected ? (
@@ -287,6 +306,7 @@ export default function App() {
                 <nav className="hidden lg:flex gap-2">
                   {tabs.map(tab => (
                     <button
+                      type="button"
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border ${
@@ -340,7 +360,7 @@ export default function App() {
                       Replicates live logic on Soroban: 3-party protocol split, milestone locks, and immutable reputation.
                     </p>
                   </div>
-                  <button onClick={dismissBanner} className="text-zinc-500 hover:text-white p-2">✕</button>
+                  <button type="button" onClick={dismissBanner} className="text-zinc-500 hover:text-white p-2">✕</button>
                 </div>
               )}
 

@@ -5,7 +5,7 @@ export const SignalLogo = ({ className = "w-10 h-10" }: { className?: string }) 
   <img
     src="/logo.png"
     alt="The Signal Logo"
-    className={`${className} object-contain drop-shadow-[0_0_15px_rgba(74,222,128,0.8)]`}
+    className={`${className} object-contain`}
   />
 );
 

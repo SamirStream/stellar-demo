@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { 
-  ShieldCheck, AlertCircle, Activity, CheckCircle, Clock, Copy, Search, ArrowRight, User, Filter, RefreshCw, Plus
+import {
+  ShieldCheck, AlertCircle, Activity, CheckCircle, Clock, Copy, Search, ArrowRight, User, Filter, RefreshCw, Plus, X
 } from 'lucide-react';
 import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol } from '../lib/stellar';
 import { useToast } from '../App';
@@ -399,29 +399,51 @@ export function DealDashboard({
         
         {/* Left Panel: Deal List */}
         <Card className={`lg:col-span-4 flex flex-col h-[calc(100vh-200px)] min-h-[600px] overflow-hidden ${mobileShowDetail ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="p-4 border-b border-zinc-800/50 bg-zinc-900/50 flex flex-col gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+          <div className="p-3 border-b border-zinc-800/50 bg-zinc-900/30 flex flex-col gap-3">
+            <div className="relative group">
+              <Search
+                size={15}
+                className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${searchQuery ? 'text-emerald-400' : 'text-zinc-600 group-focus-within:text-emerald-500'}`}
+              />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by ID, title, or address..."
-                className="w-full bg-black/40 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all placeholder:text-zinc-600"
+                placeholder="ID, title, address…"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-8 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500/50 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.08)] transition-all placeholder:text-zinc-700 font-mono"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  title="Clear search"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 transition-colors p-0.5 rounded"
+                >
+                  <X size={13} />
+                </button>
+              )}
             </div>
+            {searchQuery.trim() && (
+              <div className="flex items-center gap-1.5 px-1 text-[10px] font-mono">
+                <span className={`font-bold ${filteredDeals.length === 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                  {filteredDeals.length}
+                </span>
+                <span className="text-zinc-600">result{filteredDeals.length !== 1 ? 's' : ''} for</span>
+                <span className="text-zinc-400 bg-zinc-800 px-1.5 py-0.5 rounded truncate max-w-[120px]">"{searchQuery}"</span>
+              </div>
+            )}
             
-            <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+            <div className="flex items-center gap-0.5 bg-black/60 p-0.5 rounded-xl border border-zinc-800/60 overflow-x-auto">
               {(['all', 'Active', 'Created', 'Completed', 'Disputed', 'Cancelled'] as const).map((tab) => {
                 const count = statusCounts[tab as keyof typeof statusCounts];
                 const isActive = statusFilter === tab;
                 const activeStyle: Record<string, string> = {
-                  all:       'text-white bg-zinc-800 border-zinc-700',
-                  Active:    'text-blue-400 bg-blue-500/10 border-blue-500/30',
-                  Created:   'text-amber-400 bg-amber-500/10 border-amber-500/30',
-                  Completed: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-                  Disputed:  'text-red-400 bg-red-500/10 border-red-500/30',
-                  Cancelled: 'text-zinc-400 bg-zinc-800/60 border-zinc-700/50',
+                  all:       'text-zinc-100 bg-zinc-700/80 shadow-[0_1px_4px_rgba(0,0,0,0.6)]',
+                  Active:    'text-blue-300 bg-blue-500/20 shadow-[0_0_8px_rgba(59,130,246,0.2)]',
+                  Created:   'text-amber-300 bg-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.2)]',
+                  Completed: 'text-emerald-300 bg-emerald-500/20 shadow-[0_0_8px_rgba(52,211,153,0.2)]',
+                  Disputed:  'text-red-300 bg-red-500/20 shadow-[0_0_8px_rgba(239,68,68,0.2)]',
+                  Cancelled: 'text-zinc-400 bg-zinc-700/50 shadow-[0_1px_4px_rgba(0,0,0,0.4)]',
                 };
                 const dotStyle: Record<string, string> = {
                   Active:    'bg-blue-400',
@@ -435,10 +457,10 @@ export function DealDashboard({
                     key={tab}
                     type="button"
                     onClick={() => setStatusFilter(tab as StatusFilter)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-200 border ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-200 ${
                       isActive
                         ? activeStyle[tab]
-                        : 'bg-transparent border-transparent text-zinc-600 hover:text-zinc-300 hover:bg-zinc-900/60'
+                        : 'text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/40'
                     }`}
                   >
                     {isActive && tab !== 'all' && (
@@ -446,8 +468,8 @@ export function DealDashboard({
                     )}
                     {tab === 'all' ? 'All' : STATUS_LABELS[tab]}
                     {count > 0 && (
-                      <span className={`px-1.5 py-px rounded font-mono text-[9px] ${
-                        isActive ? 'bg-white/10' : 'bg-zinc-800/60 text-zinc-600'
+                      <span className={`px-1 py-px rounded font-mono text-[9px] ${
+                        isActive ? 'bg-white/10 text-inherit' : 'bg-zinc-800/60 text-zinc-600'
                       }`}>
                         {count}
                       </span>
@@ -531,10 +553,12 @@ export function DealDashboard({
           )}
 
           {!selectedDeal || selectedDealId === null ? (
-            <Card className="h-[calc(100vh-200px)] min-h-[600px] flex flex-col items-center justify-center text-zinc-500 text-center p-8 bg-zinc-900/20 border-dashed border-zinc-800">
-              <Activity size={48} className="mb-6 opacity-20" />
-              <h3 className="text-xl font-semibold text-zinc-300 mb-2">Select a Contract</h3>
-              <p className="max-w-md">Choose an escrow execution from the ledger to view metadata, transparent routing, and milestone signals.</p>
+            <Card className="h-[calc(100vh-200px)] min-h-[600px] bg-zinc-900/20 border-dashed border-zinc-800">
+              <div className="h-full flex flex-col items-center justify-center text-zinc-500 text-center p-8">
+                <Activity size={48} className="mb-6 opacity-20" />
+                <h3 className="text-xl font-semibold text-zinc-300 mb-2">Select a Contract</h3>
+                <p className="max-w-md">Choose an escrow execution from the ledger to view metadata, transparent routing, and milestone signals.</p>
+              </div>
             </Card>
           ) : (
             <>
