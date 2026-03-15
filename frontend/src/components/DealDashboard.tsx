@@ -87,7 +87,6 @@ interface Props {
   onDeposit: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
   onRelease: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
   onDispute: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
-  onResolveDispute: (dealId: number, milestoneIdx: number, refundBps: number) => Promise<{ txHash: string }>;
   walletAddress: string;
   xlmBalance: string;
   initialDealId?: number | null;
@@ -100,7 +99,7 @@ interface Props {
    ============================================ */
 
 export function DealDashboard({
-  getDeal, getDealCount, onDeposit, onRelease, onDispute, onResolveDispute,
+  getDeal, getDealCount, onDeposit, onRelease, onDispute,
   walletAddress, xlmBalance, initialDealId, onNavigateToCreate, onNavigateToFund,
 }: Props) {
   const toast = useToast();

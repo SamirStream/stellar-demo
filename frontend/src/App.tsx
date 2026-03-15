@@ -505,7 +505,6 @@ export default function App() {
                   onDeposit={escrow.deposit}
                   onRelease={escrow.releaseMilestone}
                   onDispute={escrow.dispute}
-                  onResolveDispute={escrow.resolveDispute}
                   walletAddress={wallet.address}
                   xlmBalance={wallet.xlmBalance}
                   initialDealId={lastCreatedDealId}
