@@ -266,7 +266,8 @@ export default function App() {
   }, []);
 
   // Opens the unified connect modal (Privy or StellarWalletsKit tabs).
-  const handleConnect = useCallback(() => {
+  // async to satisfy ConnectWallet's onConnect?: () => Promise<void> type.
+  const handleConnect = useCallback(async () => {
     setIsConnectModalOpen(true);
   }, []);
 

@@ -8,10 +8,18 @@
  *
  * Signing bridge:
  *   XDR → getStellarTxHash → signRawHash (Privy popup) → assembleStellarSignedTx → signed XDR
+ *
+ * Key API notes:
+ *  - useCreateWallet and useSignRawHash come from @privy-io/react-auth/extended-chains
+ *    (not the main package) — those are the Tier-2 / non-EVM hooks.
+ *  - useWallets() returns EVM wallets only; Stellar wallets live in user.linkedAccounts
+ *    as WalletWithMetadata entries with chainType === 'stellar'.
+ *  - signRawHash expects hash: `0x${string}` (template literal type).
  */
 import { useState, useEffect, useCallback } from 'react';
-import { usePrivy, useWallets, useCreateWallet } from '@privy-io/react-auth';
-import { useSignRawHash } from '@privy-io/react-auth/extended-chains';
+import { usePrivy } from '@privy-io/react-auth';
+import type { WalletWithMetadata } from '@privy-io/react-auth';
+import { useCreateWallet, useSignRawHash } from '@privy-io/react-auth/extended-chains';
 import {
   getXlmBalance,
   getTokenBalance,
@@ -22,15 +30,14 @@ import { getStellarTxHash, assembleStellarSignedTx } from '../lib/privy-stellar'
 import type { WalletState } from './useStellarWallet';
 
 export interface PrivyWalletState extends WalletState {
-  /** true once Privy SDK + wallet list have finished initialising */
+  /** true once Privy SDK has finished initialising */
   isPrivyReady: boolean;
   /** Call this to open Privy's login modal (email/social) */
   privyLogin: () => void;
 }
 
 export function usePrivyWallet(): PrivyWalletState {
-  const { ready, authenticated, logout, login } = usePrivy();
-  const { wallets, ready: walletsReady } = useWallets();
+  const { ready, authenticated, logout, login, user } = usePrivy();
   const { createWallet } = useCreateWallet();
   const { signRawHash } = useSignRawHash();
 
@@ -38,9 +45,13 @@ export function usePrivyWallet(): PrivyWalletState {
   const [usdcBalance, setUsdcBalance] = useState('0');
   const [networkWarning] = useState<string | null>(null);
 
-  // Find the Privy-managed Stellar embedded wallet among all connected wallets
-  const stellarWallet = wallets.find(
-    (w) => w.chainType === 'stellar' && w.walletClientType === 'privy'
+  // Stellar embedded wallets are NOT in useWallets() (EVM-only) — they live in
+  // user.linkedAccounts as WalletWithMetadata entries.
+  const stellarWallet = user?.linkedAccounts.find(
+    (a): a is WalletWithMetadata =>
+      a.type === 'wallet' &&
+      (a as WalletWithMetadata).chainType === 'stellar' &&
+      (a as WalletWithMetadata).walletClientType === 'privy'
   );
 
   const address = stellarWallet?.address ?? '';
@@ -48,14 +59,13 @@ export function usePrivyWallet(): PrivyWalletState {
 
   // After Privy login, auto-create the Stellar wallet if it doesn't exist yet
   useEffect(() => {
-    if (!ready || !walletsReady) return;
-    if (!authenticated) return;
+    if (!ready || !authenticated) return;
     if (stellarWallet) return; // already exists
 
     createWallet({ chainType: 'stellar' }).catch(() => {
       // Wallet may already exist or creation temporarily unavailable — safe to ignore
     });
-  }, [authenticated, ready, walletsReady, stellarWallet, createWallet]);
+  }, [authenticated, ready, stellarWallet, createWallet]);
 
   // Balance helpers
   const refreshBalances = useCallback(async () => {
@@ -89,7 +99,8 @@ export function usePrivyWallet(): PrivyWalletState {
     async (xdr: string): Promise<string> => {
       if (!stellarWallet) throw new Error('No Privy Stellar wallet connected.');
 
-      const hash = getStellarTxHash(xdr);
+      // Cast needed: getStellarTxHash returns string, but signRawHash requires `0x${string}`
+      const hash = getStellarTxHash(xdr) as `0x${string}`;
 
       const { signature } = await signRawHash({
         address: stellarWallet.address,
@@ -112,7 +123,7 @@ export function usePrivyWallet(): PrivyWalletState {
     disconnect,
     refreshBalances,
     signTransaction,
-    isPrivyReady: ready && walletsReady,
+    isPrivyReady: ready,
     privyLogin: login,
   };
 }
