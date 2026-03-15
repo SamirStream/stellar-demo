@@ -100,13 +100,55 @@ export function useStellarWallet(): WalletState {
     ;(async () => {
       try {
         const stored = localStorage.getItem('swk_session');
-        if (!stored) return;
+        if (!stored) {
+          // No custom session yet. The kit's STATE_UPDATED already restored the address.
+          // However, the kit's stored selectedModuleId may be stale (e.g. 'albedo' from a
+          // previous test session) while activeAddress belongs to a Freighter account.
+          // If Freighter is available and owns the kit's stored address, correct the module
+          // and call requestAccess() to authorise signing for this browser session.
+          const kitAddress = localStorage.getItem('@StellarWalletsKit/activeAddress');
+          if (!kitAddress) return;
+
+          const freighterAvail = await freighterModule.isAvailable().catch(() => false);
+          if (freighterAvail) {
+            try {
+              // requestAccess() has no built-in timeout — race against 5 s
+              const getAddrPromise = freighterModule.getAddress();
+              const timeoutPromise = new Promise<never>((_, rej) =>
+                setTimeout(() => rej(new Error('__timeout__')), 5_000)
+              );
+              const { address: freighterAddr } = await Promise.race([getAddrPromise, timeoutPromise]);
+              if (freighterAddr === kitAddress) {
+                // Freighter owns this address — prefer it over the stale kit module
+                StellarWalletsKit.setWallet(freighterModule.productId);
+                localStorage.setItem('swk_session', JSON.stringify({ address: freighterAddr, moduleId: freighterModule.productId }));
+                return; // module corrected, session saved for next load
+              }
+            } catch { /* timeout, requestAccess denied, or different account — fall through */ }
+          }
+
+          // Freighter unavailable or different account: explicitly bind kit's stored module
+          // so the selection is current and consistent with what STATE_UPDATED displayed.
+          const kitModuleId = localStorage.getItem('@StellarWalletsKit/selectedModuleId');
+          if (kitModuleId) {
+            try { StellarWalletsKit.setWallet(kitModuleId); } catch { /* unknown module */ }
+          }
+          return;
+        }
+
         const { address: storedAddress, moduleId } = JSON.parse(stored) as { address: string; moduleId: string };
         if (!storedAddress || !moduleId) { localStorage.removeItem('swk_session'); return; }
 
-        // Restore the wallet module and verify the address still matches
+        // Restore the wallet module and verify the address still matches.
         StellarWalletsKit.setWallet(moduleId);
-        const { address: restoredAddress } = await StellarWalletsKit.getAddress();
+        // For Freighter: call the actual module's getAddress() to trigger requestAccess()
+        // silently (no popup if already authorised). This ensures Freighter allows signing
+        // in this browser session even though authModal() was not called on this page load.
+        // For other wallets (Albedo etc.): read from kit memory — calling their getAddress()
+        // would open a web popup on every page reload, which is unwanted.
+        const { address: restoredAddress } = moduleId === freighterModule.productId
+          ? await StellarWalletsKit.selectedModule.getAddress()
+          : await StellarWalletsKit.getAddress();
         if (restoredAddress === storedAddress) {
           setAddress(restoredAddress);
           setIsConnected(true);
