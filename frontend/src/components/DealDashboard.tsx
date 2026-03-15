@@ -127,6 +127,7 @@ export function DealDashboard({
   const [resolveRefundPct, setResolveRefundPct] = useState(50);
 
   const [copiedKey, setCopiedKey] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchAllDeals = useCallback(async () => {
     setListLoading(true);
@@ -186,8 +187,21 @@ export function DealDashboard({
     if (myDealsOnly) {
       result = result.filter((d) => isParticipant(d.data, walletAddress));
     }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter((d) => {
+        const meta = getDealMetadata(d.id);
+        return (
+          String(d.id).includes(q) ||
+          meta?.title?.toLowerCase().includes(q) ||
+          d.data.client.toLowerCase().includes(q) ||
+          d.data.provider.toLowerCase().includes(q) ||
+          d.data.connector.toLowerCase().includes(q)
+        );
+      });
+    }
     return result;
-  }, [allDeals, statusFilter, myDealsOnly, walletAddress]);
+  }, [allDeals, statusFilter, myDealsOnly, walletAddress, searchQuery]);
 
   const statusCounts = useMemo(() => {
     const base = myDealsOnly ? allDeals.filter((d) => isParticipant(d.data, walletAddress)) : allDeals;
@@ -388,32 +402,59 @@ export function DealDashboard({
           <div className="p-4 border-b border-zinc-800/50 bg-zinc-900/50 flex flex-col gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-              <input 
-                type="text" 
-                placeholder="Search deals..." 
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by ID, title, or address..."
                 className="w-full bg-black/40 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all placeholder:text-zinc-600"
               />
             </div>
             
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {['all', 'Active', 'Created', 'Completed', 'Disputed', 'Cancelled'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setStatusFilter(tab as StatusFilter)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${
-                    statusFilter === tab 
-                      ? 'bg-zinc-800 border-zinc-700 text-zinc-100' 
-                      : 'bg-transparent border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
-                  }`}
-                >
-                  {tab === 'all' ? 'All' : STATUS_LABELS[tab] || tab}
-                  {statusCounts[tab as keyof typeof statusCounts] > 0 && (
-                    <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === tab ? 'bg-zinc-700 text-zinc-300' : 'bg-zinc-800/50 text-zinc-500'}`}>
-                      {statusCounts[tab as keyof typeof statusCounts]}
-                    </span>
-                  )}
-                </button>
-              ))}
+            <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+              {(['all', 'Active', 'Created', 'Completed', 'Disputed', 'Cancelled'] as const).map((tab) => {
+                const count = statusCounts[tab as keyof typeof statusCounts];
+                const isActive = statusFilter === tab;
+                const activeStyle: Record<string, string> = {
+                  all:       'text-white bg-zinc-800 border-zinc-700',
+                  Active:    'text-blue-400 bg-blue-500/10 border-blue-500/30',
+                  Created:   'text-amber-400 bg-amber-500/10 border-amber-500/30',
+                  Completed: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+                  Disputed:  'text-red-400 bg-red-500/10 border-red-500/30',
+                  Cancelled: 'text-zinc-400 bg-zinc-800/60 border-zinc-700/50',
+                };
+                const dotStyle: Record<string, string> = {
+                  Active:    'bg-blue-400',
+                  Created:   'bg-amber-400',
+                  Completed: 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.9)]',
+                  Disputed:  'bg-red-400',
+                  Cancelled: 'bg-zinc-500',
+                };
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setStatusFilter(tab as StatusFilter)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-200 border ${
+                      isActive
+                        ? activeStyle[tab]
+                        : 'bg-transparent border-transparent text-zinc-600 hover:text-zinc-300 hover:bg-zinc-900/60'
+                    }`}
+                  >
+                    {isActive && tab !== 'all' && (
+                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotStyle[tab]}`} />
+                    )}
+                    {tab === 'all' ? 'All' : STATUS_LABELS[tab]}
+                    {count > 0 && (
+                      <span className={`px-1.5 py-px rounded font-mono text-[9px] ${
+                        isActive ? 'bg-white/10' : 'bg-zinc-800/60 text-zinc-600'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -480,7 +521,8 @@ export function DealDashboard({
         {/* Right Panel: Deal Details */}
         <div className={`lg:col-span-8 h-full space-y-6 ${!mobileShowDetail ? 'hidden lg:block' : 'block'}`}>
           {mobileShowDetail && (
-            <button 
+            <button
+              type="button"
               onClick={() => setMobileShowDetail(false)}
               className="lg:hidden flex items-center gap-2 text-zinc-400 hover:text-zinc-200 mb-4 transition-colors p-2 -ml-2 rounded-lg hover:bg-zinc-800/50"
             >
@@ -822,6 +864,8 @@ export function DealDashboard({
                   <div className="bg-black/50 border border-zinc-800 rounded-xl p-5 space-y-6">
                     <input
                       type="range" min={0} max={100} value={resolveRefundPct}
+                      title="Refund percentage split"
+                      aria-label="Refund percentage split"
                       onChange={(e) => setResolveRefundPct(Number(e.target.value))}
                       className="w-full appearance-none bg-zinc-800 h-2 rounded-full outline-none accent-emerald-500"
                     />

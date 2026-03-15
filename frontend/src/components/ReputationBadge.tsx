@@ -127,9 +127,9 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
     <div className="w-full max-w-5xl mx-auto space-y-8 pb-32 animate-fade-in relative z-10">
       
       {/* Header */}
-      <div className="text-center space-y-6 mb-12">
+      <div className="flex flex-col items-center text-center space-y-6 mb-12">
         {/* Radar Icon */}
-        <div className="relative inline-block mb-4">
+        <div className="relative mb-4">
           <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full"></div>
           <div className="relative w-28 h-28 rounded-full border border-emerald-500/30 bg-[#02040a] flex items-center justify-center shadow-[inset_0_0_30px_rgba(16,185,129,0.1)] overflow-hidden">
             <div className="absolute top-1/2 left-1/2 w-[112px] h-[112px] -translate-x-1/2 -translate-y-1/2 origin-center animate-radar">
@@ -199,7 +199,8 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto animate-fade-in mt-12">
           
           {/* Main Reputation Score Card */}
-          <Card className="lg:col-span-1 p-8 flex flex-col items-center justify-center text-center bg-gradient-to-b from-[#02040a] to-[#09090b]" glowOnHover>
+          <Card className="lg:col-span-1 bg-gradient-to-b from-[#02040a] to-[#09090b]" glowOnHover>
+            <div className="p-8 flex flex-col items-center justify-center text-center h-full min-h-[380px]">
             <div className="relative mb-8 group">
               <div className="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="w-32 h-32 rounded-full border border-emerald-500/30 bg-[#02040a] relative z-10 flex flex-col items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.2)]">
@@ -220,6 +221,7 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
               {reputation !== null && reputation >= 5 && <Tag color="blue">Trusted</Tag>}
               {reputation !== null && reputation >= 10 && <Tag color="amber">Elite</Tag>}
               {reputation === 0 && <Tag color="zinc">New Entity</Tag>}
+            </div>
             </div>
           </Card>
 

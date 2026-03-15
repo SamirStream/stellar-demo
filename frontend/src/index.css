@@ -10,7 +10,7 @@
   --animate-fade-in-up: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-shimmer: shimmer 2s infinite;
   --animate-slide-down: slideDown 2s ease-in-out infinite;
-  --animate-marquee: marquee 28s linear infinite;
+  --animate-marquee: marquee 50s linear infinite;
   --animate-radar: radar 3s linear infinite;
   --animate-pulse-ring: pulse-ring 2s ease-in-out infinite;
 
@@ -59,6 +59,12 @@
 @tailwind utilities;
 
 @layer base {
+  .font-display {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
   body {
     font-family: 'Inter', sans-serif;
     color: #e4e4e7; /* zinc-200 */

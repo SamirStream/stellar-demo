@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useStellarWallet } from './hooks/useStellarWallet';
 import { useDealEscrow } from './hooks/useDealEscrow';
+import type { DealData } from './hooks/useDealEscrow';
 import { ConnectWallet } from './components/ConnectWallet';
 import { CreateDeal } from './components/CreateDeal';
 import { DealDashboard } from './components/DealDashboard';
@@ -53,19 +54,38 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
 /* ============================================
    Live Network Ticker
    ============================================ */
-const TICKER_ITEMS = [
-  { hash: 'A3F7C2B1', amount: 25000, type: 'ESCROW_LOCK' },
-  { hash: 'D9E4A812', amount: 8500,  type: 'MILESTONE_RELEASE' },
-  { hash: 'F1B2C394', amount: 42000, type: 'FEE_SPLIT' },
-  { hash: 'C7A8D561', amount: 15750, type: 'ESCROW_LOCK' },
-  { hash: 'E2F9B034', amount: 33200, type: 'MILESTONE_RELEASE' },
-  { hash: 'B4C1A723', amount: 9800,  type: 'FEE_SPLIT' },
-  { hash: 'A9F3C8E1', amount: 67500, type: 'ESCROW_LOCK' },
-  { hash: 'D5B2A490', amount: 21000, type: 'MILESTONE_RELEASE' },
+interface TickerItem { hash: string; amount: string; type: string }
+
+function dealToTickerItems(deal: DealData, dealId: number): TickerItem[] {
+  const hex = dealId.toString(16).padStart(8, '0').toUpperCase();
+  const rawStatus = typeof deal.status === 'string'
+    ? deal.status
+    : Object.keys(deal.status as object)[0];
+  const xlm = (Number(deal.total_amount) / 1e7).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const feeXlm = (Number(deal.total_amount) * (deal.platform_fee_bps / 10000) / 1e7)
+    .toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const items: TickerItem[] = [
+    { hash: hex, amount: xlm, type: rawStatus === 'Completed' ? 'MILESTONE_RELEASE' : 'ESCROW_LOCK' },
+  ];
+  if (Number(deal.total_amount) > 0) {
+    items.push({ hash: hex, amount: feeXlm, type: 'FEE_SPLIT' });
+  }
+  return items;
+}
+
+const FALLBACK_TICKER_ITEMS: TickerItem[] = [
+  { hash: 'A3F7C2B1', amount: '25,000', type: 'ESCROW_LOCK' },
+  { hash: 'D9E4A812', amount: '8,500',  type: 'MILESTONE_RELEASE' },
+  { hash: 'F1B2C394', amount: '42,000', type: 'FEE_SPLIT' },
+  { hash: 'C7A8D561', amount: '15,750', type: 'ESCROW_LOCK' },
+  { hash: 'E2F9B034', amount: '33,200', type: 'MILESTONE_RELEASE' },
+  { hash: 'B4C1A723', amount: '9,800',  type: 'FEE_SPLIT' },
+  { hash: 'A9F3C8E1', amount: '67,500', type: 'ESCROW_LOCK' },
+  { hash: 'D5B2A490', amount: '21,000', type: 'MILESTONE_RELEASE' },
 ];
 
-function LiveTicker() {
-  const doubled = [...TICKER_ITEMS, ...TICKER_ITEMS];
+function LiveTicker({ items }: { items: TickerItem[] }) {
+  const doubled = [...items, ...items];
   return (
     <div className="w-full bg-[#050505] border-b border-zinc-900 flex items-center h-9 overflow-hidden text-[10px] font-mono font-bold uppercase tracking-widest relative z-40">
       <div className="bg-emerald-500 text-[#010205] h-full px-4 flex items-center justify-center shrink-0 shadow-[10px_0_20px_rgba(0,0,0,0.9)]">
@@ -80,7 +100,7 @@ function LiveTicker() {
               <span className={item.type === 'MILESTONE_RELEASE' ? 'text-emerald-400' : 'text-zinc-500'}>
                 {item.type}
               </span>
-              <span className="text-zinc-400">{item.amount.toLocaleString()} XLM</span>
+              <span className="text-zinc-400">{item.amount} XLM</span>
               <span className="text-zinc-800">·</span>
             </div>
           ))}
@@ -95,7 +115,7 @@ type Tab = 'create' | 'dashboard' | 'fund' | 'reputation';
 const tabs: { id: Tab; label: string; icon: any }[] = [
   { id: 'fund', label: 'Liquidity', icon: Coins },
   { id: 'create', label: 'Deploy Contract', icon: Plus },
-  { id: 'dashboard', label: 'Terminal', icon: TerminalSquare },
+  { id: 'dashboard', label: 'Deals', icon: TerminalSquare },
   { id: 'reputation', label: 'Oracle', icon: Award },
 ];
 
@@ -165,6 +185,32 @@ export default function App() {
   const wallet = useStellarWallet();
   const escrow = useDealEscrow(wallet.address, wallet.signTransaction);
 
+  // Live ticker — real data when wallet connected, fallback otherwise
+  const [tickerItems, setTickerItems] = useState<TickerItem[]>(FALLBACK_TICKER_ITEMS);
+  const escrowRef = useRef(escrow);
+  useEffect(() => { escrowRef.current = escrow; });
+  useEffect(() => {
+    if (!wallet.isConnected) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const count = await escrowRef.current.getDealCount();
+        if (count === 0 || cancelled) return;
+        const n = Math.min(count, 8);
+        const start = Math.max(0, count - n);
+        const results = await Promise.allSettled(
+          Array.from({ length: n }, (_, i) => escrowRef.current.getDeal(start + i))
+        );
+        const newItems: TickerItem[] = results.flatMap((r, idx) => {
+          if (r.status !== 'fulfilled' || !r.value) return [];
+          return dealToTickerItems(r.value, start + idx);
+        });
+        if (!cancelled && newItems.length >= 2) setTickerItems(newItems);
+      } catch { /* keep fallback */ }
+    })();
+    return () => { cancelled = true; };
+  }, [wallet.isConnected]);
+
   // Toast system
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastIdRef = useRef(0);
@@ -217,21 +263,20 @@ export default function App() {
         <GlowingBackground />
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-        {/* Live Ticker */}
-        <LiveTicker />
+        {/* Live Ticker — hidden on Oracle tab */}
+        {!(wallet.isConnected && activeTab === 'reputation') && (
+          <LiveTicker items={tickerItems} />
+        )}
 
         {/* Header */}
         <header className="relative z-50 border-b border-zinc-800/80 bg-[#02040a]/80 backdrop-blur-2xl sticky top-0">
           <div className="max-w-[90rem] mx-auto px-6 h-24 flex items-center justify-between">
             {/* Logo */}
             <a href="https://thesignal.directory" target="_blank" rel="noopener noreferrer" className="flex items-center gap-5 cursor-pointer group">
-              <div className="relative">
-                <div className="absolute inset-0 bg-emerald-500 blur-lg opacity-40 group-hover:opacity-80 transition-opacity"></div>
-                <SignalLogo className="w-12 h-12 relative z-10" />
-              </div>
+              <SignalLogo className="w-12 h-12" />
               <div className="flex flex-col">
-                <span className="text-3xl font-black tracking-tighter text-white group-hover:text-emerald-400 transition-colors">THE SIGNAL</span>
-                <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.3em]">Decentralized Escrow</span>
+                <span className="font-display text-3xl text-white group-hover:text-emerald-400 transition-colors leading-none">THE SIGNAL</span>
+                <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.3em] mt-1">Decentralized Escrow</span>
               </div>
             </a>
 

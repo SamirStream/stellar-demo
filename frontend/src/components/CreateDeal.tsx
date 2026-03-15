@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { toContractAmount, XLM_SAC_ADDRESS, USDC_TOKEN_ADDRESS, TOKENS, DEMO_ACCOUNTS, isValidStellarAddress, getExplorerTxLink } from '../lib/stellar';
 import { saveDealMetadata } from '../lib/dealMetadata';
 import { useToast } from '../App';
-import { Card, Button, Tag } from './ui/Components';
+import { Card, Button } from './ui/Components';
 import { Settings2, Plus, X, Search, Coins, AlertCircle, ArrowRight, CheckCircle2, FileText, Check, ShieldCheck, Zap } from 'lucide-react';
 
 interface MilestoneInput {
@@ -204,48 +204,50 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
   if (result) {
     return (
       <div className="w-full max-w-2xl mx-auto animate-fade-in py-12">
-        <Card className="p-10 flex flex-col items-center text-center relative overflow-hidden bg-[#02040a]">
-          <div className="absolute top-0 right-0 p-32 bg-emerald-500/10 blur-[100px] rounded-full point-events-none" />
-          <div className="absolute bottom-0 left-0 p-32 bg-emerald-500/5 blur-[100px] rounded-full point-events-none" />
-          
-          <div className="w-20 h-20 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.3)] mb-6 z-10">
-            <CheckCircle2 size={40} className="text-emerald-400" />
-          </div>
-          
-          <h3 className="text-3xl font-black text-white mb-2 tracking-tight z-10">Contract Deployed</h3>
-          <p className="text-zinc-400 mb-8 z-10">The trustless escrow agreement is now live on the Stellar network.</p>
-          
-          <div className="w-full bg-[#09090b]/80 border border-zinc-800 rounded-xl p-6 text-left space-y-4 mb-8 z-10">
-            <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
-              <span className="text-zinc-500 text-sm font-medium">Deal ID</span>
-              <span className="text-emerald-400 font-mono font-bold">#{result.dealId}</span>
+        <Card className="relative overflow-hidden bg-[#02040a]">
+          <div className="absolute top-0 right-0 p-32 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-0 left-0 p-32 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
+
+          <div className="p-10 flex flex-col items-center text-center">
+            <div className="w-20 h-20 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.3)] mb-6">
+              <CheckCircle2 size={40} className="text-emerald-400" />
             </div>
-            {result.txHash && (
+
+            <h3 className="text-3xl font-black text-white mb-2 tracking-tight">Contract Deployed</h3>
+            <p className="text-zinc-400 mb-8">The trustless escrow agreement is now live on the Stellar network.</p>
+
+            <div className="w-full bg-[#09090b]/80 border border-zinc-800 rounded-xl p-6 text-left space-y-4 mb-8">
               <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
-                <span className="text-zinc-500 text-sm font-medium">Transaction</span>
-                <a href={getExplorerTxLink(result.txHash)} target="_blank" rel="noopener noreferrer" className="text-emerald-400 font-mono font-medium hover:text-emerald-300 underline underline-offset-2 flex items-center gap-1">
-                  {result.txHash.slice(0, 16)}... <ArrowRight size={14} />
-                </a>
+                <span className="text-zinc-500 text-sm font-medium">Deal ID</span>
+                <span className="text-emerald-400 font-mono font-bold">#{result.dealId}</span>
               </div>
-            )}
-            <div className="flex justify-between items-center py-2">
-              <span className="text-zinc-500 text-sm font-medium">Overview</span>
-              <span className="text-white font-medium">{milestones.length} milestones &middot; {totalAmount} {tokenSymbol}</span>
+              {result.txHash && (
+                <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
+                  <span className="text-zinc-500 text-sm font-medium">Transaction</span>
+                  <a href={getExplorerTxLink(result.txHash)} target="_blank" rel="noopener noreferrer" className="text-emerald-400 font-mono font-medium hover:text-emerald-300 underline underline-offset-2 flex items-center gap-1">
+                    {result.txHash.slice(0, 16)}... <ArrowRight size={14} />
+                  </a>
+                </div>
+              )}
+              <div className="flex justify-between items-center py-2">
+                <span className="text-zinc-500 text-sm font-medium">Overview</span>
+                <span className="text-white font-medium">{milestones.length} milestones &middot; {totalAmount} {tokenSymbol}</span>
+              </div>
             </div>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full z-10">
-            <Button
-              onClick={() => onDealCreated?.(result.dealId)}
-              variant="primary"
-              className="py-4 w-full"
-              icon={Zap}
-            >
-              View Dashboard
-            </Button>
-            <Button onClick={() => setResult(null)} variant="secondary" className="py-4 w-full" icon={Plus}>
-              Initialize New
-            </Button>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+              <Button
+                onClick={() => onDealCreated?.(result.dealId)}
+                variant="primary"
+                className="py-4 w-full"
+                icon={Zap}
+              >
+                View Dashboard
+              </Button>
+              <Button onClick={() => setResult(null)} variant="secondary" className="py-4 w-full" icon={Plus}>
+                Initialize New
+              </Button>
+            </div>
           </div>
         </Card>
       </div>
@@ -281,20 +283,14 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
               )}
 
               <div className="space-y-4">
-                <div className="bg-[#09090b] border border-zinc-800 rounded-xl p-4 flex justify-between items-center">
-                  <div>
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Service Provider</span>
-                    <span className="text-zinc-300 font-mono text-sm">{provider}</span>
-                  </div>
-                  <Tag color="amber">Executor</Tag>
+                <div className="bg-[#09090b] border border-zinc-800 rounded-xl p-4">
+                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Service Provider</span>
+                  <span className="text-zinc-300 font-mono text-sm break-all">{provider}</span>
                 </div>
-                
-                <div className="bg-[#09090b] border border-zinc-800 rounded-xl p-4 flex justify-between items-center">
-                  <div>
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Business Developer (Connector)</span>
-                    <span className="text-zinc-300 font-mono text-sm">{connector}</span>
-                  </div>
-                  <Tag color="zinc">Referrer</Tag>
+
+                <div className="bg-[#09090b] border border-zinc-800 rounded-xl p-4">
+                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Business Developer (Connector)</span>
+                  <span className="text-zinc-300 font-mono text-sm break-all">{connector}</span>
                 </div>
               </div>
             </Card>
