@@ -77,7 +77,7 @@ export function WalletConnectModal({
   const { sendCode, loginWithCode } = useLoginWithEmail({
     onComplete: () => onClose(),
     onError: (err) => {
-      setEmailError(err.message ?? 'Erreur — réessaie.');
+      setEmailError(err ?? 'Something went wrong — please try again.');
       setEmailLoading(false);
     },
   });
@@ -204,7 +204,7 @@ export function WalletConnectModal({
 
             {!isPrivyAppConfigured && (
               <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-medium">
-                ⚠ <code className="font-mono">VITE_PRIVY_APP_ID</code> non configuré dans{' '}
+                ⚠ <code className="font-mono">VITE_PRIVY_APP_ID</code> not set in{' '}
                 <code className="font-mono">.env</code>
               </div>
             )}
@@ -270,14 +270,14 @@ export function WalletConnectModal({
             ) : (
               <div className="flex flex-col gap-2">
                 <p className="text-[11px] text-zinc-500 px-1">
-                  Code envoyé à <span className="text-zinc-300 font-mono">{email}</span>
+                  Code sent to <span className="text-zinc-300 font-mono">{email}</span>
                   {' '}—{' '}
                   <button
                     type="button"
                     onClick={() => { setEmailStep('input'); setCode(''); setEmailError(''); }}
                     className="text-emerald-500 hover:underline"
                   >
-                    changer
+                    change
                   </button>
                 </p>
                 <div className="flex gap-2">
@@ -314,7 +314,7 @@ export function WalletConnectModal({
         {activeTab === 'swk' && (
           <div className="p-6 flex flex-col gap-4">
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Connecte-toi avec une extension de navigateur. Freighter ou Albedo doit être installé.
+              Connect using a browser extension. Freighter or Albedo must be installed.
             </p>
 
             <div className="grid grid-cols-2 gap-2">
