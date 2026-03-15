@@ -263,6 +263,26 @@ export default function App() {
     localStorage.setItem('parity-banner-dismissed', '1');
   }, []);
 
+  // Wrapper around wallet.connect that surfaces errors as toasts.
+  // Needed because requestAccess() in @stellar/freighter-api has no timeout —
+  // if Freighter's Firefox popup fails, the promise hangs silently.
+  const handleConnect = useCallback(async () => {
+    try {
+      await wallet.connect();
+    } catch (err: any) {
+      const msg = (err?.message || '').toLowerCase();
+      if (msg.includes('__connect_timeout__')) {
+        toast(
+          'Wallet connection timed out. Close any open popup, then try again. ' +
+          'If using Freighter on Firefox, try disabling and re-enabling the extension.',
+          'error'
+        );
+      } else if (!msg.includes('cancel') && !msg.includes('reject') && !msg.includes('denied')) {
+        toast('Failed to connect wallet. Try Albedo (web-based, no extension needed).', 'error');
+      }
+    }
+  }, [wallet.connect, toast]);
+
   // Keyboard tab navigation (Alt+1/2/3/4)
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -365,7 +385,7 @@ export default function App() {
         {/* Main Content */}
         <main className="relative z-10 max-w-[90rem] mx-auto px-6 py-12 flex-1 w-full">
           {!wallet.isConnected ? (
-            <LandingView onConnect={wallet.connect} />
+            <LandingView onConnect={handleConnect} />
           ) : (
             <div className="min-h-[70vh]">
               {/* Production Parity Banner - Styled for new design */}

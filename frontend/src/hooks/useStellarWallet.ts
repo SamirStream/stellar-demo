@@ -109,15 +109,20 @@ export function useStellarWallet(): WalletState {
     }
   }, [isConnected, address]);
 
-  // Connect wallet via auth modal
+  // Connect wallet via auth modal.
+  // authModal() → FreighterModule.getAddress() → requestAccess() has no
+  // built-in timeout in @stellar/freighter-api. If the Freighter popup fails
+  // to open (Firefox extension bug), the promise hangs forever with no feedback.
+  // We add a 60s timeout and re-throw so callers can show a useful error.
   const connect = useCallback(async () => {
-    try {
-      const { address: walletAddress } = await StellarWalletsKit.authModal();
-      setAddress(walletAddress);
-      setIsConnected(true);
-    } catch (error) {
-      console.error('Failed to connect wallet:', error);
-    }
+    const CONNECT_TIMEOUT_MS = 60_000;
+    const connectPromise = StellarWalletsKit.authModal();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('__connect_timeout__')), CONNECT_TIMEOUT_MS)
+    );
+    const { address: walletAddress } = await Promise.race([connectPromise, timeoutPromise]);
+    setAddress(walletAddress);
+    setIsConnected(true);
   }, []);
 
   // Disconnect wallet
