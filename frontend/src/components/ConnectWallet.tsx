@@ -5,13 +5,16 @@ import { Wallet } from 'lucide-react';
 
 interface Props {
   wallet: WalletState;
+  // Optional override for the connect action — use to inject error handling (e.g. toast)
+  // from the parent without coupling ConnectWallet to the toast system.
+  onConnect?: () => Promise<void>;
 }
 
-export function ConnectWallet({ wallet }: Props) {
+export function ConnectWallet({ wallet, onConnect }: Props) {
   if (!wallet.isConnected) {
     return (
       <Button
-        onClick={wallet.connect}
+        onClick={onConnect ?? wallet.connect}
         variant="primary"
         className="px-6 py-2.5 text-sm"
         icon={Wallet}

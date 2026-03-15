@@ -6,9 +6,9 @@ import {
   sorobanServer,
 } from '../lib/stellar';
 
-// Use sdk.rpc namespace (NOT @stellar/stellar-sdk/rpc subpath import)
-// to avoid dual stellar-base class mismatch with Transaction instanceof checks
-const rpc = (StellarSdk as any).rpc;
+// Access rpc namespace directly — stellar-base is pinned at 14.1.0 via package.json overrides,
+// so the dual-class mismatch is already resolved and the any cast is unnecessary.
+const rpc = StellarSdk.rpc;
 
 const MAX_TX_POLL_RETRIES = 30; // 30 × 2s = 60s max wait
 
@@ -39,7 +39,8 @@ export interface DealData {
 
 export function useDealEscrow(
   walletAddress: string,
-  signTransaction: (xdr: string, opts?: any) => Promise<string>
+  signTransaction: (xdr: string, opts?: any) => Promise<string>,
+  refreshBalances?: () => Promise<void>
 ) {
   const contractId = DEAL_ESCROW_CONTRACT;
   const txInFlight = useRef(false);
@@ -60,7 +61,7 @@ export function useDealEscrow(
       try {
         const account = await sorobanServer.getAccount(walletAddress);
         const tx = new StellarSdk.TransactionBuilder(account, {
-          fee: '10000000', // 1 XLM max fee for testnet
+          fee: StellarSdk.BASE_FEE, // 100 stroops — assembleTransaction will set the real simulated fee
           networkPassphrase: NETWORK_PASSPHRASE,
         })
           .addOperation(operation)
@@ -114,12 +115,18 @@ export function useDealEscrow(
 
         // Attach the hash from sendResult (getTransaction doesn't always include it)
         getResult._txHash = sendResult.hash;
+
+        // Immediately refresh wallet balance after a confirmed transaction
+        if (getResult.status === rpc.Api.GetTransactionStatus.SUCCESS) {
+          refreshBalances?.().catch(() => {});
+        }
+
         return getResult;
       } finally {
         txInFlight.current = false;
       }
     },
-    [walletAddress, contractId, signTransaction]
+    [walletAddress, contractId, signTransaction, refreshBalances]
   );
 
   // Create a new deal

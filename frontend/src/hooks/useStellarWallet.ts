@@ -9,7 +9,7 @@ import { AlbedoModule } from '@creit.tech/stellar-wallets-kit/modules/albedo';
 // xBullModule removed: xBull always reports isAvailable=true but its web popup
 // (wallet.xbull.app/connect) is blocked by Firefox popup blocker when opened
 // from an async context, causing silent "nothing happens" with no error feedback.
-import { getXlmBalance, getTokenBalance, formatAmount, USDC_TOKEN_ADDRESS } from '../lib/stellar';
+import { getXlmBalance, getTokenBalance, formatAmount, USDC_TOKEN_ADDRESS, NETWORK_PASSPHRASE } from '../lib/stellar';
 
 // FreighterModule detection uses window.postMessage with a 2s timeout.
 // If the extension content script hasn't injected yet when the modal opens,
@@ -40,6 +40,7 @@ export interface WalletState {
   isConnected: boolean;
   xlmBalance: string;
   usdcBalance: string;
+  networkWarning: string | null;
   connect: () => Promise<void>;
   disconnect: () => void;
   refreshBalances: () => Promise<void>;
@@ -51,6 +52,7 @@ export function useStellarWallet(): WalletState {
   const [isConnected, setIsConnected] = useState(false);
   const [xlmBalance, setXlmBalance] = useState('0');
   const [usdcBalance, setUsdcBalance] = useState('0');
+  const [networkWarning, setNetworkWarning] = useState<string | null>(null);
   const initialized = useRef(false);
 
   // Initialize the wallet kit once
@@ -72,6 +74,13 @@ export function useStellarWallet(): WalletState {
     // clicks Connect Wallet. Avoids the 2s timeout race on first open.
     freighterModule.isAvailable().catch(() => {});
 
+    // Capture the selected module ID when the user picks a wallet in the modal.
+    // KitEventWalletSelected payload shape: { id: string | undefined }
+    // Stored in sessionStorage temporarily so connect() can persist it to localStorage.
+    StellarWalletsKit.on(KitEventType.WALLET_SELECTED, (event) => {
+      if (event.payload.id) sessionStorage.setItem('swk_module_id', event.payload.id);
+    });
+
     // Listen for state updates (e.g. user changes wallet address)
     StellarWalletsKit.on(KitEventType.STATE_UPDATED, (event) => {
       if (event.payload.address) {
@@ -86,6 +95,29 @@ export function useStellarWallet(): WalletState {
       setXlmBalance('0');
       setUsdcBalance('0');
     });
+
+    // Try to restore a previous session (async — must not block init)
+    ;(async () => {
+      try {
+        const stored = localStorage.getItem('swk_session');
+        if (!stored) return;
+        const { address: storedAddress, moduleId } = JSON.parse(stored) as { address: string; moduleId: string };
+        if (!storedAddress || !moduleId) { localStorage.removeItem('swk_session'); return; }
+
+        // Restore the wallet module and verify the address still matches
+        StellarWalletsKit.setWallet(moduleId);
+        const { address: restoredAddress } = await StellarWalletsKit.getAddress();
+        if (restoredAddress === storedAddress) {
+          setAddress(restoredAddress);
+          setIsConnected(true);
+        } else {
+          localStorage.removeItem('swk_session');
+        }
+      } catch {
+        // Session restoration failed (extension locked, module unavailable, etc.)
+        localStorage.removeItem('swk_session');
+      }
+    })();
   }, []);
 
   // Refresh balances
@@ -126,6 +158,26 @@ export function useStellarWallet(): WalletState {
     const { address: walletAddress } = await Promise.race([connectPromise, timeoutPromise]);
     setAddress(walletAddress);
     setIsConnected(true);
+
+    // Persist session so the wallet stays connected across page reloads.
+    // moduleId was captured by the WALLET_SELECTED event listener during authModal().
+    const moduleId = sessionStorage.getItem('swk_module_id') || '';
+    localStorage.setItem('swk_session', JSON.stringify({ address: walletAddress, moduleId }));
+
+    // Validate that the connected wallet is on the expected network.
+    // getNetwork() is only supported by extension wallets (Freighter); Albedo silently returns
+    // the kit's configured network, so mismatches are only possible with extension wallets.
+    try {
+      const net = await StellarWalletsKit.getNetwork();
+      if (net?.networkPassphrase && net.networkPassphrase !== NETWORK_PASSPHRASE) {
+        const name = net.networkPassphrase.includes('Public') ? 'Mainnet' : 'an unknown network';
+        setNetworkWarning(`Wrong network: your wallet is connected to ${name}. Switch to Testnet in your wallet settings.`);
+      } else {
+        setNetworkWarning(null);
+      }
+    } catch {
+      // getNetwork() is not supported by all wallet modules — fail silently.
+    }
   }, []);
 
   // Disconnect wallet
@@ -139,6 +191,9 @@ export function useStellarWallet(): WalletState {
     setIsConnected(false);
     setXlmBalance('0');
     setUsdcBalance('0');
+    setNetworkWarning(null);
+    localStorage.removeItem('swk_session');
+    sessionStorage.removeItem('swk_module_id');
   }, []);
 
   // Sign a transaction with error categorization and timeout guard.
@@ -182,6 +237,7 @@ export function useStellarWallet(): WalletState {
     isConnected,
     xlmBalance,
     usdcBalance,
+    networkWarning,
     connect,
     disconnect,
     refreshBalances,

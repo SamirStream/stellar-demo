@@ -208,7 +208,7 @@ export default function App() {
   );
   
   const wallet = useStellarWallet();
-  const escrow = useDealEscrow(wallet.address, wallet.signTransaction);
+  const escrow = useDealEscrow(wallet.address, wallet.signTransaction, wallet.refreshBalances);
 
   // Live ticker — fetched on mount (read-only, no wallet needed), shown only on homepage
   const [tickerItems, setTickerItems] = useState<TickerItem[]>([]);
@@ -376,7 +376,7 @@ export default function App() {
               </div>
             ) : (
               <div className="flex items-center gap-4">
-                 <ConnectWallet wallet={wallet} />
+                 <ConnectWallet wallet={wallet} onConnect={handleConnect} />
               </div>
             )}
           </div>
@@ -388,6 +388,14 @@ export default function App() {
             <LandingView onConnect={handleConnect} />
           ) : (
             <div className="min-h-[70vh]">
+              {/* Network mismatch warning — shown when wallet is connected to the wrong network */}
+              {wallet.networkWarning && (
+                <div className="mb-6 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm font-medium flex items-center gap-2">
+                  <span>⚠</span>
+                  <span>{wallet.networkWarning}</span>
+                </div>
+              )}
+
               {/* Production Parity Banner - Styled for new design */}
               {!bannerDismissed && (
                 <div className="mb-10 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-transparent border border-emerald-500/20 flex justify-between items-start relative overflow-hidden group">

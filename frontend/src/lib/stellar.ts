@@ -1,7 +1,8 @@
 import * as StellarSdk from '@stellar/stellar-sdk';
 
-// Use sdk.rpc namespace to avoid dual stellar-base class mismatch
-const SorobanRpc = (StellarSdk as any).rpc;
+// Access rpc namespace directly — stellar-base is pinned at 14.1.0 via package.json overrides,
+// so the dual-class mismatch is already resolved and the any cast is unnecessary.
+const SorobanRpc = StellarSdk.rpc;
 
 // Testnet configuration
 export const NETWORK = 'TESTNET';
