@@ -317,7 +317,6 @@ export default function App() {
         <WalletConnectModal
           isOpen={isConnectModalOpen}
           onClose={() => setIsConnectModalOpen(false)}
-          privyLogin={wallet.privyLogin}
           swkConnect={wallet.swkConnect}
           onSwkError={handleSwkError}
           isPrivyAppConfigured={!!import.meta.env.VITE_PRIVY_APP_ID}
