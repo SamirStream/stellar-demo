@@ -4,7 +4,8 @@ import {
   Zap, ArrowRightLeft,
   Coins, Plus,
   Network, Cpu, Lock,
-  TerminalSquare, Activity, Globe2
+  TerminalSquare, Activity, Globe2,
+  Copy, Check,
 } from 'lucide-react';
 import { useUnifiedWallet } from './hooks/useUnifiedWallet';
 import { useDealEscrow } from './hooks/useDealEscrow';
@@ -307,6 +308,13 @@ export default function App() {
 
   // Truncate wallet logic
   const truncWallet = wallet.address ? `${wallet.address.slice(0, 4)}...${wallet.address.slice(-4)}` : '';
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(() => {
+    if (!wallet.address) return;
+    navigator.clipboard.writeText(wallet.address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [wallet.address]);
 
   return (
     <ToastContext.Provider value={toast}>
@@ -384,10 +392,30 @@ export default function App() {
                       {wallet.activeSource === 'privy' ? 'Privy · Testnet' : 'Testnet'}
                     </span>
                   </div>
-                  {/* Keep wallet.disconnect bound to this click or add a dropdown eventually, for now just click to disconnect */}
-                  <div onClick={wallet.disconnect} title="Click to disconnect" className="bg-[#02040a] text-emerald-100 text-xs font-mono font-bold px-4 py-3 rounded-xl border border-zinc-800 hover:border-red-500/50 hover:text-red-400 cursor-pointer transition-all shadow-[inset_0_0_10px_rgba(16,185,129,0.05)] flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>
-                    {truncWallet}
+                  {/* Address chip — click address to copy, click × to disconnect */}
+                  <div className="bg-[#02040a] text-emerald-100 text-xs font-mono font-bold px-3 py-3 rounded-xl border border-zinc-800 shadow-[inset_0_0_10px_rgba(16,185,129,0.05)] flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] shrink-0"></div>
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      title="Copy public key"
+                      className="flex items-center gap-1.5 hover:text-emerald-400 transition-colors"
+                    >
+                      {truncWallet}
+                      {copied
+                        ? <Check size={11} className="text-emerald-400" />
+                        : <Copy size={11} className="text-zinc-600 hover:text-zinc-400" />
+                      }
+                    </button>
+                    <span className="w-px h-4 bg-zinc-800 mx-0.5" />
+                    <button
+                      type="button"
+                      onClick={wallet.disconnect}
+                      title="Disconnect"
+                      className="text-zinc-600 hover:text-red-400 transition-colors text-[10px] font-bold"
+                    >
+                      ×
+                    </button>
                   </div>
                 </div>
               </div>

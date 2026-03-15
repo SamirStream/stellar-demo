@@ -320,29 +320,7 @@ export function WalletConnectModal({
 
         {/* ── TAB 2: Extension Wallet ── */}
         {activeTab === 'swk' && (
-          <div className="p-6 flex flex-col gap-4">
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Connect using a browser extension. Freighter or Albedo must be installed.
-            </p>
-
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: 'Freighter', desc: 'Extension', icon: '🚀' },
-                { label: 'Albedo',    desc: 'Web-based',  icon: '🌐' },
-              ].map((w) => (
-                <div
-                  key={w.label}
-                  className="flex flex-col gap-1 px-3 py-3 rounded-lg bg-zinc-900 border border-zinc-800"
-                >
-                  <div className="flex items-center gap-2 text-xs text-zinc-300 font-bold">
-                    <span>{w.icon}</span>
-                    <span>{w.label}</span>
-                  </div>
-                  <span className="text-[10px] text-zinc-500">{w.desc}</span>
-                </div>
-              ))}
-            </div>
-
+          <div className="p-6">
             <button
               type="button"
               onClick={handleSwkConnect}

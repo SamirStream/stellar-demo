@@ -121,10 +121,9 @@ export function DealDashboard({
   const [splitView, setSplitView] = useState<{ milestoneIdx: number; txHash: string } | null>(null);
 
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'release' | 'dispute' | 'resolve';
+    type: 'release' | 'dispute';
     milestoneIdx: number;
   } | null>(null);
-  const [resolveRefundPct, setResolveRefundPct] = useState(50);
 
   const [copiedKey, setCopiedKey] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -312,24 +311,6 @@ export function DealDashboard({
     }
   };
 
-  const handleResolve = async (milestoneIdx: number, refundPct: number) => {
-    if (selectedDealId === null) return;
-    setActionLoading(`resolve-${milestoneIdx}`);
-    setError('');
-    setConfirmAction(null);
-    try {
-      const res = await onResolveDispute(selectedDealId, milestoneIdx, refundPct * 100);
-      setLastTxHash(res.txHash);
-      recordMilestoneEvent(selectedDealId, milestoneIdx, { action: 'resolved', timestamp: new Date().toISOString(), txHash: res.txHash });
-      toast('Dispute resolved successfully', 'success');
-      await fetchAllDeals();
-    } catch (err: any) {
-      setError(err.message || 'Resolve failed');
-      toast('Resolution failed', 'error');
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   useEffect(() => {
     if (confirmAction) {
@@ -398,8 +379,9 @@ export function DealDashboard({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
         
         {/* Left Panel: Deal List */}
-        <Card className={`lg:col-span-4 flex flex-col h-[calc(100vh-200px)] min-h-[600px] overflow-hidden ${mobileShowDetail ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="p-3 border-b border-zinc-800/50 bg-zinc-900/30 flex flex-col gap-3">
+        <Card className={`lg:col-span-4 h-[calc(100vh-200px)] min-h-[600px] ${mobileShowDetail ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="flex flex-col h-full overflow-hidden">
+          <div className="p-3 border-b border-zinc-800/50 bg-zinc-900/30 flex flex-col gap-3 shrink-0">
             <div className="relative group">
               <Search
                 size={15}
@@ -480,7 +462,7 @@ export function DealDashboard({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-700 [&::-webkit-scrollbar-thumb]:rounded-full">
             {listLoading ? (
               [...Array(5)].map((_, i) => (
                 <div key={i} className="animate-pulse p-4 rounded-xl border border-zinc-800/50 bg-zinc-900/20">
@@ -537,6 +519,7 @@ export function DealDashboard({
                 );
               })
             )}
+          </div>
           </div>
         </Card>
 
@@ -753,9 +736,17 @@ export function DealDashboard({
                                 </Button>
                               )}
                               {status === 'Disputed' && (
-                                <Button variant="primary" onClick={() => { setResolveRefundPct(50); setConfirmAction({ type: 'resolve', milestoneIdx: i }); }} disabled={!!actionLoading} className="text-xs py-1.5">
-                                  {actionLoading === `resolve-${i}` ? 'Resolving...' : 'Resolve Arbitration'}
-                                </Button>
+                                <div className="w-full space-y-2">
+                                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px]">
+                                    <span className="shrink-0">⚖</span>
+                                    <span>Under review — The Signal team handles resolution</span>
+                                  </div>
+                                  {isClient && (
+                                    <Button variant="secondary" onClick={() => setConfirmAction({ type: 'release', milestoneIdx: i })} disabled={!!actionLoading} className="text-xs py-1.5 px-3 w-full">
+                                      {actionLoading === `release-${i}` ? 'Signing...' : 'Accept & Release to Provider'}
+                                    </Button>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>
@@ -873,45 +864,6 @@ export function DealDashboard({
               </div>
             )}
 
-            {confirmAction.type === 'resolve' && (() => {
-              const m = selectedDeal.milestones[confirmAction.milestoneIdx];
-              const amount = m ? Number(m.amount) : 0;
-              const clientRefund = Math.floor(amount * resolveRefundPct / 100);
-              const providerPayout = amount - clientRefund;
-              return (
-                <div className="space-y-6">
-                  <div className="text-center space-y-2 mb-6">
-                     <h3 className="text-xl font-bold text-zinc-100">Resolve Arbitration</h3>
-                     <p className="text-sm text-zinc-400">Configure split weight for conflict resolution (Client refund vs Provider payout).</p>
-                  </div>
-                  
-                  <div className="bg-black/50 border border-zinc-800 rounded-xl p-5 space-y-6">
-                    <input
-                      type="range" min={0} max={100} value={resolveRefundPct}
-                      title="Refund percentage split"
-                      aria-label="Refund percentage split"
-                      onChange={(e) => setResolveRefundPct(Number(e.target.value))}
-                      className="w-full appearance-none bg-zinc-800 h-2 rounded-full outline-none accent-emerald-500"
-                    />
-                    <div className="flex justify-between text-sm font-mono">
-                      <div className="space-y-1">
-                        <div className="text-zinc-500">Client Refund</div>
-                        <div className="text-zinc-200">{formatAmount(clientRefund.toString())} <span className="text-xs opacity-50">({resolveRefundPct}%)</span></div>
-                      </div>
-                      <div className="space-y-1 text-right">
-                        <div className="text-zinc-500">Provider Payout</div>
-                        <div className="text-zinc-200">{formatAmount(providerPayout.toString())} <span className="text-xs opacity-50">({100 - resolveRefundPct}%)</span></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <Button variant="secondary" className="flex-1" onClick={() => setConfirmAction(null)}>Cancel</Button>
-                    <Button variant="primary" className="flex-1" onClick={() => handleResolve(confirmAction.milestoneIdx, resolveRefundPct)}>Resolve State</Button>
-                  </div>
-                </div>
-              );
-            })()}
           </Card>
         </div>
       )}
