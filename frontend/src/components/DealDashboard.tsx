@@ -499,24 +499,30 @@ export function DealDashboard({
                         : 'bg-zinc-900/30 border-zinc-800/50 hover:bg-zinc-800/50 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex items-start gap-2 mb-2">
-                      <div className="font-mono text-sm font-medium text-zinc-200 group-hover:text-emerald-400 transition-colors min-w-0 flex-1 truncate">
-                        {getDealMetadata(deal.id)?.title || `Deal #${deal.id}`}
-                      </div>
-                      <Tag color={STATUS_COLORS[status] || 'zinc'} className="shrink-0">{STATUS_LABELS[status] || status}</Tag>
+                    {/* Row 1: Title */}
+                    <div className="font-mono text-sm font-medium text-zinc-200 group-hover:text-emerald-400 transition-colors truncate mb-2">
+                      {getDealMetadata(deal.id)?.title || `Deal #${deal.id}`}
                     </div>
-                    
-                    <div className="flex justify-between items-end mt-4">
-                      <div>
-                        <div className="text-lg font-semibold text-zinc-100">
+
+                    {/* Row 2: Status badge + Amount */}
+                    <div className="flex items-center justify-between gap-2">
+                      <Tag color={STATUS_COLORS[status] || 'zinc'} className="whitespace-nowrap shrink-0">
+                        {STATUS_LABELS[status] || status}
+                      </Tag>
+                      <div className="text-right shrink-0">
+                        <div className="text-base font-semibold text-zinc-100 leading-tight">
                           {formatAmount(deal.data.total_amount.toString())} <span className="text-xs text-zinc-500">{getTokenSymbol(deal.data.token)}</span>
                         </div>
-                        <div className="text-xs text-zinc-500 flex items-center gap-1 mt-1">
-                          <Clock size={12} /> {getMilestoneProgress(deal.data)} Milestones
-                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 3: Milestones + Role */}
+                    <div className="flex items-center justify-between mt-1.5">
+                      <div className="text-xs text-zinc-500 flex items-center gap-1">
+                        <Clock size={12} /> {getMilestoneProgress(deal.data)} Milestones
                       </div>
                       {role && (
-                        <div className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-zinc-800 text-zinc-400">
+                        <div className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 shrink-0">
                           {role}
                         </div>
                       )}
