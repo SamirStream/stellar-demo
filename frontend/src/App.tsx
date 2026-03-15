@@ -5,7 +5,7 @@ import {
   Coins, Plus,
   Network, Cpu, Lock,
   TerminalSquare, Activity, Globe2,
-  Copy, Check,
+  Copy, Check, Loader2,
 } from 'lucide-react';
 import { useUnifiedWallet } from './hooks/useUnifiedWallet';
 import { useDealEscrow } from './hooks/useDealEscrow';
@@ -429,7 +429,30 @@ export default function App() {
 
         {/* Main Content */}
         <main className="relative z-10 max-w-[90rem] mx-auto px-6 py-12 flex-1 w-full">
-          {!wallet.isConnected ? (
+          {wallet.isWalletLoading ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 animate-fade-in">
+              {/* Pulsing logo ring */}
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-2xl animate-pulse" />
+                <div className="relative w-24 h-24 rounded-full border border-emerald-500/30 bg-[#02040a] flex items-center justify-center shadow-[inset_0_0_30px_rgba(16,185,129,0.1)]">
+                  <Loader2 size={36} className="text-emerald-400 animate-spin" />
+                </div>
+              </div>
+              {/* Skeleton lines */}
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-zinc-300 font-semibold text-lg">Setting up your wallet…</p>
+                <p className="text-zinc-500 text-sm">Creating your embedded Stellar account</p>
+              </div>
+              <div className="flex flex-col items-center gap-2 w-48">
+                <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500/60 rounded-full animate-[shimmer_1.5s_ease-in-out_infinite] w-2/3" />
+                </div>
+                <div className="h-2 w-3/4 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500/40 rounded-full animate-[shimmer_2s_ease-in-out_infinite] w-1/2" />
+                </div>
+              </div>
+            </div>
+          ) : !wallet.isConnected ? (
             <LandingView onConnect={handleConnect} />
           ) : (
             <div className="min-h-[70vh]">

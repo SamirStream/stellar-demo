@@ -32,6 +32,8 @@ import type { WalletState } from './useStellarWallet';
 export interface PrivyWalletState extends WalletState {
   /** true once Privy SDK has finished initialising */
   isPrivyReady: boolean;
+  /** true while user is authenticated but Stellar wallet is still being created */
+  isWalletLoading: boolean;
   /** Call this to open Privy's login modal (email/social) */
   privyLogin: () => void;
 }
@@ -124,6 +126,7 @@ export function usePrivyWallet(): PrivyWalletState {
     refreshBalances,
     signTransaction,
     isPrivyReady: ready,
+    isWalletLoading: ready && authenticated && !stellarWallet,
     privyLogin: login,
   };
 }

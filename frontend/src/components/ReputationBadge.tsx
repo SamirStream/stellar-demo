@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, Award, Activity, Hexagon, Trophy, ExternalLink, User, AlertCircle } from 'lucide-react';
+import { Search, Award, Activity, Hexagon, Trophy, ExternalLink, User, AlertCircle, Crown, Briefcase, Loader2 } from 'lucide-react';
 import { formatAmount, getExplorerContractLink, DEAL_ESCROW_CONTRACT } from '../lib/stellar';
 import type { DealData } from '../hooks/useDealEscrow';
 import { Card, Button, Tag } from './ui/Components';
@@ -45,6 +45,15 @@ interface DealActivity {
   milestonesTotal: number;
 }
 
+interface LeaderEntry {
+  address: string;
+  completedDeals: number;
+  totalDeals: number;
+  volume: bigint;
+  milestonesReleased: number;
+  milestonesTotal: number;
+}
+
 interface Props {
   getReputation: (address: string) => Promise<number>;
   getDealCount: () => Promise<number>;
@@ -60,6 +69,82 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
   const [error, setError] = useState('');
   const displayRep = useCountUp(reputation ?? 0);
   const autoFetched = useRef(false);
+
+  // Leaderboard — fetched once on mount from all on-chain deals
+  const [leaderboard, setLeaderboard] = useState<{ clients: LeaderEntry[]; providers: LeaderEntry[] } | null>(null);
+  const [leaderLoading, setLeaderLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const count = await getDealCount();
+        if (!count) { setLeaderLoading(false); return; }
+        const max = Math.min(count, 50);
+        const start = Math.max(0, count - max);
+        const results = await Promise.allSettled(
+          Array.from({ length: max }, (_, i) => getDeal(start + i))
+        );
+        const deals = results
+          .filter((r): r is PromiseFulfilledResult<DealData | null> => r.status === 'fulfilled' && r.value !== null)
+          .map((r) => r.value!);
+
+        const clientMap = new Map<string, LeaderEntry>();
+        const providerMap = new Map<string, LeaderEntry>();
+
+        const blank = (addr: string): LeaderEntry => ({
+          address: addr, completedDeals: 0, totalDeals: 0,
+          volume: BigInt(0), milestonesReleased: 0, milestonesTotal: 0,
+        });
+
+        for (const deal of deals) {
+          const isCompleted = getDealStatus(deal) === 'Completed';
+          let msReleased = 0;
+          for (const m of deal.milestones) {
+            if (getMilestoneStatus(m) === 'Released') msReleased++;
+          }
+
+          if (deal.client) {
+            const e = clientMap.get(deal.client) ?? blank(deal.client);
+            e.totalDeals++;
+            if (isCompleted) e.completedDeals++;
+            e.volume += deal.total_amount;
+            e.milestonesReleased += msReleased;
+            e.milestonesTotal += deal.milestones.length;
+            clientMap.set(deal.client, e);
+          }
+          if (deal.provider) {
+            const e = providerMap.get(deal.provider) ?? blank(deal.provider);
+            e.totalDeals++;
+            if (isCompleted) e.completedDeals++;
+            e.volume += deal.total_amount;
+            e.milestonesReleased += msReleased;
+            e.milestonesTotal += deal.milestones.length;
+            providerMap.set(deal.provider, e);
+          }
+        }
+
+        const sortClients = [...clientMap.values()]
+          .sort((a, b) => b.completedDeals - a.completedDeals || Number(b.volume - a.volume > 0n ? 1 : -1))
+          .slice(0, 5);
+
+        const sortProviders = [...providerMap.values()]
+          .sort((a, b) => {
+            const rA = a.milestonesTotal ? a.milestonesReleased / a.milestonesTotal : 0;
+            const rB = b.milestonesTotal ? b.milestonesReleased / b.milestonesTotal : 0;
+            return Math.abs(rB - rA) > 0.01
+              ? rB - rA
+              : Number(b.volume - a.volume > 0n ? 1 : -1);
+          })
+          .slice(0, 5);
+
+        if (!cancelled) setLeaderboard({ clients: sortClients, providers: sortProviders });
+      } catch { /* chain unreachable */ }
+      if (!cancelled) setLeaderLoading(false);
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLookup = useCallback(async () => {
     if (!address) return;
@@ -306,6 +391,91 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
 
         </div>
       )}
+
+      {/* ── Leaderboard ── */}
+      <div className="max-w-6xl mx-auto mt-16 space-y-6">
+        <div className="flex items-center gap-3 mb-2">
+          <Crown size={18} className="text-amber-400" />
+          <h3 className="text-lg font-black uppercase tracking-widest text-white">On-Chain Leaderboard</h3>
+          <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">live · testnet</span>
+        </div>
+
+        {leaderLoading ? (
+          <div className="flex items-center justify-center gap-3 py-12 text-zinc-600">
+            <Loader2 size={18} className="animate-spin" />
+            <span className="text-sm">Scanning ledger…</span>
+          </div>
+        ) : !leaderboard || (leaderboard.clients.length === 0 && leaderboard.providers.length === 0) ? (
+          <p className="text-sm text-zinc-600 text-center py-8">No on-chain data found.</p>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top Clients */}
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-5 pb-4 border-b border-zinc-800/60">
+                <User size={14} className="text-blue-400" />
+                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Top Clients</h4>
+                <span className="ml-auto text-[9px] text-zinc-600 uppercase tracking-widest">by completed deals</span>
+              </div>
+              <div className="space-y-3">
+                {leaderboard.clients.map((entry, i) => (
+                  <div key={entry.address} className="flex items-center gap-3">
+                    <span className={`w-6 text-center text-xs font-black shrink-0 ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-zinc-300' : i === 2 ? 'text-amber-700' : 'text-zinc-600'}`}>
+                      {i + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setAddress(entry.address)}
+                      title="Load in scanner"
+                      className="flex-1 min-w-0 font-mono text-xs text-emerald-400 hover:text-emerald-300 transition-colors truncate text-left"
+                    >
+                      {entry.address.slice(0, 6)}…{entry.address.slice(-4)}
+                    </button>
+                    <div className="shrink-0 text-right">
+                      <div className="text-xs font-bold text-zinc-200">{entry.completedDeals} <span className="text-zinc-600 font-normal">done</span></div>
+                      <div className="text-[10px] font-mono text-blue-400">{(Number(entry.volume) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Top Providers */}
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-5 pb-4 border-b border-zinc-800/60">
+                <Briefcase size={14} className="text-emerald-400" />
+                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Top Providers</h4>
+                <span className="ml-auto text-[9px] text-zinc-600 uppercase tracking-widest">by release rate</span>
+              </div>
+              <div className="space-y-3">
+                {leaderboard.providers.map((entry, i) => {
+                  const rate = entry.milestonesTotal
+                    ? Math.round((entry.milestonesReleased / entry.milestonesTotal) * 100)
+                    : 0;
+                  return (
+                    <div key={entry.address} className="flex items-center gap-3">
+                      <span className={`w-6 text-center text-xs font-black shrink-0 ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-zinc-300' : i === 2 ? 'text-amber-700' : 'text-zinc-600'}`}>
+                        {i + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAddress(entry.address)}
+                        title="Load in scanner"
+                        className="flex-1 min-w-0 font-mono text-xs text-emerald-400 hover:text-emerald-300 transition-colors truncate text-left"
+                      >
+                        {entry.address.slice(0, 6)}…{entry.address.slice(-4)}
+                      </button>
+                      <div className="shrink-0 text-right">
+                        <div className="text-xs font-bold text-zinc-200">{rate}% <span className="text-zinc-600 font-normal">released</span></div>
+                        <div className="text-[10px] font-mono text-emerald-400">{(Number(entry.volume) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

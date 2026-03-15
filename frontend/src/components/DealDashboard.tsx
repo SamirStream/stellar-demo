@@ -356,14 +356,18 @@ export function DealDashboard({
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
-          <Button 
-            variant="secondary" 
-            onClick={() => setMyDealsOnly(!myDealsOnly)} 
-            icon={User}
-            className={`transition-colors ${myDealsOnly ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' : ''}`}
+          <button
+            type="button"
+            onClick={() => setMyDealsOnly(!myDealsOnly)}
+            className={`relative flex items-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95 border ${
+              myDealsOnly
+                ? 'text-emerald-300 bg-emerald-500/15 border-emerald-400/60 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
+                : 'text-zinc-500 bg-zinc-900/60 border-zinc-700/50 hover:text-zinc-200 hover:border-zinc-600'
+            }`}
           >
+            <User size={16} className={myDealsOnly ? 'text-emerald-300' : 'text-zinc-500'} />
             My Escrows
-          </Button>
+          </button>
           <Button variant="secondary" onClick={fetchAllDeals} disabled={listLoading} icon={RefreshCw}>
             Sync Ledger
           </Button>

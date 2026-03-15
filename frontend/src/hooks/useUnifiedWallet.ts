@@ -22,6 +22,8 @@ export interface UnifiedWalletState extends WalletState {
   privyLogin: () => void;
   /** Opens StellarWalletsKit's auth modal (Freighter / Albedo) */
   swkConnect: () => Promise<void>;
+  /** true while Privy auth is complete but Stellar wallet is still being created */
+  isWalletLoading: boolean;
 }
 
 export function useUnifiedWallet(): UnifiedWalletState {
@@ -42,5 +44,6 @@ export function useUnifiedWallet(): UnifiedWalletState {
     activeSource,
     privyLogin: privy.privyLogin,
     swkConnect: swk.connect,
+    isWalletLoading: privy.isWalletLoading,
   };
 }
