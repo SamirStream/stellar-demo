@@ -10,7 +10,7 @@
   --animate-fade-in-up: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-shimmer: shimmer 2s infinite;
   --animate-slide-down: slideDown 2s ease-in-out infinite;
-  --animate-marquee: marquee 50s linear infinite;
+  --animate-marquee: marquee 120s linear infinite;
   --animate-radar: radar 3s linear infinite;
   --animate-pulse-ring: pulse-ring 2s ease-in-out infinite;
 
@@ -69,7 +69,7 @@
 @layer base {
   .font-display {
     font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
+    font-weight: 800;
     letter-spacing: -0.02em;
   }
 
@@ -104,25 +104,29 @@
     background: #4ade80;
   }
 
-  /* Glitch text effect */
+  /* Glitch text effect — always active, pauses on hover */
   .glitch-text {
     position: relative;
   }
-  .glitch-wrapper:hover .glitch-text::before,
-  .glitch-wrapper:hover .glitch-text::after {
+  .glitch-wrapper .glitch-text::before,
+  .glitch-wrapper .glitch-text::after {
     content: attr(data-text);
     position: absolute;
     top: 0; left: 0;
     width: 100%; height: 100%;
   }
-  .glitch-wrapper:hover .glitch-text::before {
+  .glitch-wrapper .glitch-text::before {
     left: 3px;
     text-shadow: -2px 0 rgba(255, 0, 80, 0.7);
     animation: glitch 2s infinite linear alternate-reverse;
   }
-  .glitch-wrapper:hover .glitch-text::after {
+  .glitch-wrapper .glitch-text::after {
     left: -3px;
     text-shadow: 2px 0 rgba(0, 200, 255, 0.7);
     animation: glitch 3s infinite linear alternate-reverse;
+  }
+  .glitch-wrapper:hover .glitch-text::before,
+  .glitch-wrapper:hover .glitch-text::after {
+    animation: none;
   }
 }

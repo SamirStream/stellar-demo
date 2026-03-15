@@ -56,33 +56,54 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
    ============================================ */
 interface TickerItem { hash: string; amount: string; type: string }
 
+const STATUS_ACTION_MAP: Record<string, string> = {
+  Created: 'AWAITING_FUNDING',
+  Active: 'ESCROW_ACTIVE',
+  Completed: 'DEAL_COMPLETED',
+  Cancelled: 'DEAL_CANCELLED',
+  Disputed: 'DISPUTE_OPEN',
+};
+
+function normalizeTickerStatus(val: any): string {
+  if (typeof val === 'string') return val;
+  if (Array.isArray(val)) return val[0];
+  return Object.keys(val as object)[0];
+}
+
 function dealToTickerItems(deal: DealData, dealId: number): TickerItem[] {
-  const hex = dealId.toString(16).padStart(8, '0').toUpperCase();
-  const rawStatus = typeof deal.status === 'string'
-    ? deal.status
-    : Object.keys(deal.status as object)[0];
+  const status = normalizeTickerStatus(deal.status);
   const xlm = (Number(deal.total_amount) / 1e7).toLocaleString('en-US', { maximumFractionDigits: 0 });
-  const feeXlm = (Number(deal.total_amount) * (deal.platform_fee_bps / 10000) / 1e7)
-    .toLocaleString('en-US', { maximumFractionDigits: 0 });
+  const idLabel = `CONTRACT #${String(dealId).padStart(3, '0')}`;
+
   const items: TickerItem[] = [
-    { hash: hex, amount: xlm, type: rawStatus === 'Completed' ? 'MILESTONE_RELEASE' : 'ESCROW_LOCK' },
+    { hash: idLabel, amount: xlm, type: STATUS_ACTION_MAP[status] || status.toUpperCase() },
   ];
-  if (Number(deal.total_amount) > 0) {
-    items.push({ hash: hex, amount: feeXlm, type: 'FEE_SPLIT' });
-  }
+
+  // Append individual milestone events for funded or released milestones
+  deal.milestones.forEach((m: any, i: number) => {
+    const mStatus = normalizeTickerStatus(m.status);
+    if (mStatus === 'Released' || mStatus === 'Funded') {
+      const mXlm = (Number(m.amount) / 1e7).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      items.push({
+        hash: `CONTRACT #${String(dealId).padStart(3, '0')} · MS${i + 1}`,
+        amount: mXlm,
+        type: mStatus === 'Released' ? 'MILESTONE_RELEASED' : 'MILESTONE_FUNDED',
+      });
+    }
+  });
+
   return items;
 }
 
-const FALLBACK_TICKER_ITEMS: TickerItem[] = [
-  { hash: 'A3F7C2B1', amount: '25,000', type: 'ESCROW_LOCK' },
-  { hash: 'D9E4A812', amount: '8,500',  type: 'MILESTONE_RELEASE' },
-  { hash: 'F1B2C394', amount: '42,000', type: 'FEE_SPLIT' },
-  { hash: 'C7A8D561', amount: '15,750', type: 'ESCROW_LOCK' },
-  { hash: 'E2F9B034', amount: '33,200', type: 'MILESTONE_RELEASE' },
-  { hash: 'B4C1A723', amount: '9,800',  type: 'FEE_SPLIT' },
-  { hash: 'A9F3C8E1', amount: '67,500', type: 'ESCROW_LOCK' },
-  { hash: 'D5B2A490', amount: '21,000', type: 'MILESTONE_RELEASE' },
-];
+const TICKER_TYPE_COLORS: Record<string, string> = {
+  DEAL_COMPLETED:     'text-emerald-400',
+  MILESTONE_RELEASED: 'text-emerald-400',
+  ESCROW_ACTIVE:      'text-blue-400',
+  MILESTONE_FUNDED:   'text-blue-400',
+  AWAITING_FUNDING:   'text-amber-400',
+  DISPUTE_OPEN:       'text-red-400',
+  DEAL_CANCELLED:     'text-zinc-600',
+};
 
 function LiveTicker({ items }: { items: TickerItem[] }) {
   const doubled = [...items, ...items];
@@ -95,12 +116,12 @@ function LiveTicker({ items }: { items: TickerItem[] }) {
       <div className="flex-1 overflow-hidden">
         <div className="flex whitespace-nowrap animate-marquee w-max">
           {doubled.map((item, i) => (
-            <div key={i} className="flex items-center gap-5 px-6 text-zinc-600">
-              <span className="text-zinc-700">TX_{item.hash}</span>
-              <span className={item.type === 'MILESTONE_RELEASE' ? 'text-emerald-400' : 'text-zinc-500'}>
+            <div key={i} className="flex items-center gap-4 px-8">
+              <span className="text-zinc-500">{item.hash}</span>
+              <span className={`${TICKER_TYPE_COLORS[item.type] ?? 'text-zinc-600'}`}>
                 {item.type}
               </span>
-              <span className="text-zinc-400">{item.amount} XLM</span>
+              <span className="text-zinc-300 font-bold">{item.amount} XLM</span>
               <span className="text-zinc-800">·</span>
             </div>
           ))}
@@ -128,7 +149,7 @@ const LandingView = ({ onConnect }: { onConnect: () => void }) => (
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
         <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
       </span>
-      <span className="text-[10px] font-black tracking-[0.3em] uppercase">Stellar Soroban Testnet V2.1</span>
+      <span className="text-[10px] font-black tracking-[0.3em] uppercase">Stellar Soroban Testnet</span>
     </div>
 
     <div className="glitch-wrapper relative mb-10">
@@ -148,7 +169,7 @@ const LandingView = ({ onConnect }: { onConnect: () => void }) => (
     <div className="flex flex-col sm:flex-row gap-6 mb-32 relative">
       <div className="absolute -inset-6 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none"></div>
       <Button onClick={onConnect} variant="primary" className="px-10 py-5 w-full sm:w-auto relative z-10" icon={TerminalSquare}>
-        Initialize Terminal
+        Connect Wallet
       </Button>
       <a href="https://stellar.expert/explorer/testnet" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto relative z-10">
         <Button variant="secondary" className="px-10 py-5 w-full h-full" icon={Globe2}>
@@ -189,18 +210,18 @@ export default function App() {
   const wallet = useStellarWallet();
   const escrow = useDealEscrow(wallet.address, wallet.signTransaction);
 
-  // Live ticker — real data when wallet connected, fallback otherwise
-  const [tickerItems, setTickerItems] = useState<TickerItem[]>(FALLBACK_TICKER_ITEMS);
+  // Live ticker — only real on-chain data, nothing shown if no deals loaded
+  const [tickerItems, setTickerItems] = useState<TickerItem[]>([]);
   const escrowRef = useRef(escrow);
   useEffect(() => { escrowRef.current = escrow; });
   useEffect(() => {
-    if (!wallet.isConnected) return;
+    if (!wallet.isConnected) { setTickerItems([]); return; }
     let cancelled = false;
     (async () => {
       try {
         const count = await escrowRef.current.getDealCount();
         if (count === 0 || cancelled) return;
-        const n = Math.min(count, 8);
+        const n = Math.min(count, 10);
         const start = Math.max(0, count - n);
         const results = await Promise.allSettled(
           Array.from({ length: n }, (_, i) => escrowRef.current.getDeal(start + i))
@@ -209,8 +230,8 @@ export default function App() {
           if (r.status !== 'fulfilled' || !r.value) return [];
           return dealToTickerItems(r.value, start + idx);
         });
-        if (!cancelled && newItems.length >= 2) setTickerItems(newItems);
-      } catch { /* keep fallback */ }
+        if (!cancelled && newItems.length > 0) setTickerItems(newItems);
+      } catch { /* no data available */ }
     })();
     return () => { cancelled = true; };
   }, [wallet.isConnected]);
@@ -267,8 +288,8 @@ export default function App() {
         <GlowingBackground />
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-        {/* Live Ticker — hidden on Oracle tab */}
-        {!(wallet.isConnected && activeTab === 'reputation') && (
+        {/* Live Ticker — only shown when real on-chain data is available */}
+        {tickerItems.length > 0 && activeTab !== 'reputation' && (
           <LiveTicker items={tickerItems} />
         )}
 
