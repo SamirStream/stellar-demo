@@ -10,7 +10,10 @@
     "preview": "vite preview"
   },
   "overrides": {
-    "@stellar/stellar-base": "14.1.0"
+    "@stellar/stellar-base": "14.1.0",
+    "@tailwindcss/vite": {
+      "vite": "$vite"
+    }
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.0.1",
