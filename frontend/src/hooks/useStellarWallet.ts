@@ -9,6 +9,30 @@ import { xBullModule } from '@creit.tech/stellar-wallets-kit/modules/xbull';
 import { AlbedoModule } from '@creit.tech/stellar-wallets-kit/modules/albedo';
 import { getXlmBalance, getTokenBalance, formatAmount, USDC_TOKEN_ADDRESS } from '../lib/stellar';
 
+// FreighterModule detection uses window.postMessage with a 2s timeout.
+// If the extension content script hasn't injected yet when the modal opens,
+// it times out and shows "Install". Fix: cache the detection result so
+// pre-warming on mount prevents the race condition on first click.
+class CachedFreighterModule extends FreighterModule {
+  private _cached: Promise<boolean> | null = null;
+
+  async isAvailable(): Promise<boolean> {
+    if (!this._cached) {
+      this._cached = super.isAvailable().then((result) => {
+        if (!result) this._cached = null; // retry if false (not yet injected)
+        return result;
+      }).catch(() => {
+        this._cached = null;
+        return false;
+      });
+    }
+    return this._cached;
+  }
+}
+
+// Module-level singleton so cache persists across re-renders
+const freighterModule = new CachedFreighterModule();
+
 export interface WalletState {
   address: string;
   isConnected: boolean;
@@ -35,11 +59,15 @@ export function useStellarWallet(): WalletState {
     StellarWalletsKit.init({
       network: Networks.TESTNET,
       modules: [
-        new FreighterModule(),
+        freighterModule,
         new xBullModule(),
         new AlbedoModule(),
       ],
     });
+
+    // Pre-warm Freighter detection so the cache is populated before the user
+    // clicks Connect Wallet. Avoids the 2s timeout race on first open.
+    freighterModule.isAvailable().catch(() => {});
 
     // Listen for state updates (e.g. user changes wallet address)
     StellarWalletsKit.on(KitEventType.STATE_UPDATED, (event) => {
