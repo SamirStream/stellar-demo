@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, Award, Activity, Hexagon, Trophy, ExternalLink, User, AlertCircle, Crown, Briefcase, Loader2 } from 'lucide-react';
-import { formatAmount, getExplorerContractLink, DEAL_ESCROW_CONTRACT } from '../lib/stellar';
+import { Search, Award, Activity, Hexagon, Trophy, ExternalLink, User, AlertCircle, Crown, Briefcase, Loader2, Network } from 'lucide-react';
+import { formatAmount, getExplorerContractLink, getExplorerAccountLink, DEAL_ESCROW_CONTRACT } from '../lib/stellar';
 import type { DealData } from '../hooks/useDealEscrow';
 import { Card, Button, Tag } from './ui/Components';
 
@@ -71,7 +71,7 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
   const autoFetched = useRef(false);
 
   // Leaderboard — fetched once on mount from all on-chain deals
-  const [leaderboard, setLeaderboard] = useState<{ clients: LeaderEntry[]; providers: LeaderEntry[] } | null>(null);
+  const [leaderboard, setLeaderboard] = useState<{ clients: LeaderEntry[]; providers: LeaderEntry[]; connectors: LeaderEntry[] } | null>(null);
   const [leaderLoading, setLeaderLoading] = useState(true);
 
   useEffect(() => {
@@ -91,6 +91,7 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
 
         const clientMap = new Map<string, LeaderEntry>();
         const providerMap = new Map<string, LeaderEntry>();
+        const connectorMap = new Map<string, LeaderEntry>();
 
         const blank = (addr: string): LeaderEntry => ({
           address: addr, completedDeals: 0, totalDeals: 0,
@@ -122,6 +123,15 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
             e.milestonesTotal += deal.milestones.length;
             providerMap.set(deal.provider, e);
           }
+          if (deal.connector) {
+            const e = connectorMap.get(deal.connector) ?? blank(deal.connector);
+            e.totalDeals++;
+            if (isCompleted) e.completedDeals++;
+            e.volume += deal.total_amount;
+            e.milestonesReleased += msReleased;
+            e.milestonesTotal += deal.milestones.length;
+            connectorMap.set(deal.connector, e);
+          }
         }
 
         const sortClients = [...clientMap.values()]
@@ -138,7 +148,11 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
           })
           .slice(0, 5);
 
-        if (!cancelled) setLeaderboard({ clients: sortClients, providers: sortProviders });
+        const sortConnectors = [...connectorMap.values()]
+          .sort((a, b) => b.totalDeals - a.totalDeals || Number(b.volume - a.volume > 0n ? 1 : -1))
+          .slice(0, 5);
+
+        if (!cancelled) setLeaderboard({ clients: sortClients, providers: sortProviders, connectors: sortConnectors });
       } catch { /* chain unreachable */ }
       if (!cancelled) setLeaderLoading(false);
     })();
@@ -408,71 +422,142 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
         ) : !leaderboard || (leaderboard.clients.length === 0 && leaderboard.providers.length === 0) ? (
           <p className="text-sm text-zinc-600 text-center py-8">No on-chain data found.</p>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top Clients */}
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-5 pb-4 border-b border-zinc-800/60">
-                <User size={14} className="text-blue-400" />
-                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Top Clients</h4>
-                <span className="ml-auto text-[9px] text-zinc-600 uppercase tracking-widest">by completed deals</span>
-              </div>
-              <div className="space-y-3">
-                {leaderboard.clients.map((entry, i) => (
-                  <div key={entry.address} className="flex items-center gap-3">
-                    <span className={`w-6 text-center text-xs font-black shrink-0 ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-zinc-300' : i === 2 ? 'text-amber-700' : 'text-zinc-600'}`}>
-                      {i + 1}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setAddress(entry.address)}
-                      title="Load in scanner"
-                      className="flex-1 min-w-0 font-mono text-xs text-emerald-400 hover:text-emerald-300 transition-colors truncate text-left"
-                    >
-                      {entry.address.slice(0, 6)}…{entry.address.slice(-4)}
-                    </button>
-                    <div className="shrink-0 text-right">
-                      <div className="text-xs font-bold text-zinc-200">{entry.completedDeals} <span className="text-zinc-600 font-normal">done</span></div>
-                      <div className="text-[10px] font-mono text-blue-400">{(Number(entry.volume) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            {/* Top Providers */}
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-5 pb-4 border-b border-zinc-800/60">
-                <Briefcase size={14} className="text-emerald-400" />
-                <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Top Providers</h4>
-                <span className="ml-auto text-[9px] text-zinc-600 uppercase tracking-widest">by release rate</span>
-              </div>
-              <div className="space-y-3">
-                {leaderboard.providers.map((entry, i) => {
-                  const rate = entry.milestonesTotal
-                    ? Math.round((entry.milestonesReleased / entry.milestonesTotal) * 100)
-                    : 0;
-                  return (
+          <div className="space-y-6">
+            {/* Top Clients + Top Providers — 2 columns */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Top Clients */}
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-5 pb-4 border-b border-zinc-800/60">
+                  <User size={14} className="text-blue-400" />
+                  <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Top Clients</h4>
+                  <span className="ml-auto text-[9px] text-zinc-600 uppercase tracking-widest">by completed deals</span>
+                </div>
+                <div className="space-y-3">
+                  {leaderboard.clients.map((entry, i) => (
                     <div key={entry.address} className="flex items-center gap-3">
                       <span className={`w-6 text-center text-xs font-black shrink-0 ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-zinc-300' : i === 2 ? 'text-amber-700' : 'text-zinc-600'}`}>
                         {i + 1}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setAddress(entry.address)}
-                        title="Load in scanner"
-                        className="flex-1 min-w-0 font-mono text-xs text-emerald-400 hover:text-emerald-300 transition-colors truncate text-left"
-                      >
-                        {entry.address.slice(0, 6)}…{entry.address.slice(-4)}
-                      </button>
+                      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setAddress(entry.address)}
+                          title="Scan in Oracle"
+                          className="font-mono text-xs text-emerald-400 hover:text-emerald-300 transition-colors truncate text-left"
+                        >
+                          {entry.address.slice(0, 6)}…{entry.address.slice(-4)}
+                        </button>
+                        <a
+                          href={getExplorerAccountLink(entry.address)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View on Stellar Expert"
+                          className="text-zinc-600 hover:text-blue-400 transition-colors shrink-0"
+                        >
+                          <ExternalLink size={10} />
+                        </a>
+                      </div>
                       <div className="shrink-0 text-right">
-                        <div className="text-xs font-bold text-zinc-200">{rate}% <span className="text-zinc-600 font-normal">released</span></div>
-                        <div className="text-[10px] font-mono text-emerald-400">{(Number(entry.volume) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM</div>
+                        <div className="text-xs font-bold text-zinc-200">{entry.completedDeals} <span className="text-zinc-600 font-normal">done</span></div>
+                        <div className="text-[10px] font-mono text-blue-400">{(Number(entry.volume) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM</div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </Card>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Top Providers */}
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-5 pb-4 border-b border-zinc-800/60">
+                  <Briefcase size={14} className="text-emerald-400" />
+                  <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Top Providers</h4>
+                  <span className="ml-auto text-[9px] text-zinc-600 uppercase tracking-widest">by release rate</span>
+                </div>
+                <div className="space-y-3">
+                  {leaderboard.providers.map((entry, i) => {
+                    const rate = entry.milestonesTotal
+                      ? Math.round((entry.milestonesReleased / entry.milestonesTotal) * 100)
+                      : 0;
+                    return (
+                      <div key={entry.address} className="flex items-center gap-3">
+                        <span className={`w-6 text-center text-xs font-black shrink-0 ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-zinc-300' : i === 2 ? 'text-amber-700' : 'text-zinc-600'}`}>
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setAddress(entry.address)}
+                            title="Scan in Oracle"
+                            className="font-mono text-xs text-emerald-400 hover:text-emerald-300 transition-colors truncate text-left"
+                          >
+                            {entry.address.slice(0, 6)}…{entry.address.slice(-4)}
+                          </button>
+                          <a
+                            href={getExplorerAccountLink(entry.address)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View on Stellar Expert"
+                            className="text-zinc-600 hover:text-emerald-400 transition-colors shrink-0"
+                          >
+                            <ExternalLink size={10} />
+                          </a>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <div className="text-xs font-bold text-zinc-200">{rate}% <span className="text-zinc-600 font-normal">released</span></div>
+                          <div className="text-[10px] font-mono text-emerald-400">{(Number(entry.volume) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </div>
+
+            {/* Top BD (Connectors) — full width */}
+            {leaderboard.connectors.length > 0 && (
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-5 pb-4 border-b border-zinc-800/60">
+                  <Network size={14} className="text-purple-400" />
+                  <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Top BD Connectors</h4>
+                  <span className="ml-auto text-[9px] text-zinc-600 uppercase tracking-widest">by deals facilitated</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                  {leaderboard.connectors.map((entry, i) => (
+                    <div key={entry.address} className="flex items-center gap-3 bg-zinc-900/40 border border-zinc-800/50 rounded-xl px-3 py-2.5">
+                      <span className={`w-5 text-center text-xs font-black shrink-0 ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-zinc-300' : i === 2 ? 'text-amber-700' : 'text-zinc-600'}`}>
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setAddress(entry.address)}
+                            title="Scan in Oracle"
+                            className="font-mono text-xs text-purple-400 hover:text-purple-300 transition-colors truncate text-left"
+                          >
+                            {entry.address.slice(0, 6)}…{entry.address.slice(-4)}
+                          </button>
+                          <a
+                            href={getExplorerAccountLink(entry.address)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View on Stellar Expert"
+                            className="text-zinc-600 hover:text-purple-400 transition-colors shrink-0"
+                          >
+                            <ExternalLink size={10} />
+                          </a>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px]">
+                          <span className="font-bold text-zinc-200">{entry.totalDeals} <span className="text-zinc-600 font-normal">deals</span></span>
+                          <span className="text-zinc-700">·</span>
+                          <span className="font-mono text-purple-400">{(Number(entry.volume) / 1e7).toLocaleString(undefined, { maximumFractionDigits: 0 })} XLM</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
           </div>
         )}
       </div>

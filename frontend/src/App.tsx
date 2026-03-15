@@ -5,7 +5,7 @@ import {
   Coins, Plus,
   Network, Cpu, Lock,
   TerminalSquare, Activity, Globe2,
-  Copy, Check, Loader2,
+  Copy, Check, Loader2, LogOut,
 } from 'lucide-react';
 import { useUnifiedWallet } from './hooks/useUnifiedWallet';
 import { useDealEscrow } from './hooks/useDealEscrow';
@@ -411,10 +411,11 @@ export default function App() {
                     <button
                       type="button"
                       onClick={wallet.disconnect}
-                      title="Disconnect"
-                      className="text-zinc-600 hover:text-red-400 transition-colors text-[10px] font-bold"
+                      title="Disconnect wallet"
+                      className="flex items-center gap-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all px-2.5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider"
                     >
-                      ×
+                      <LogOut size={13} />
+                      <span className="hidden sm:inline">Disconnect</span>
                     </button>
                   </div>
                 </div>

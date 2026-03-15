@@ -380,9 +380,9 @@ export function DealDashboard({
 
       {/* Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
-        
+
         {/* Left Panel: Deal List */}
-        <Card className={`lg:col-span-4 h-[calc(100vh-200px)] min-h-[600px] ${mobileShowDetail ? 'hidden lg:flex' : 'flex'}`}>
+        <Card className={`lg:col-span-4 h-[calc(100svh-260px)] lg:h-[calc(100vh-200px)] min-h-[400px] ${mobileShowDetail ? 'hidden lg:flex' : 'flex'}`}>
           <div className="flex flex-col h-full overflow-hidden">
           <div className="p-3 border-b border-zinc-800/50 bg-zinc-900/30 flex flex-col gap-3 shrink-0">
             <div className="relative group">
@@ -418,7 +418,8 @@ export function DealDashboard({
               </div>
             )}
             
-            <div className="flex items-center gap-0.5 bg-black/60 p-0.5 rounded-xl border border-zinc-800/60 overflow-x-auto">
+            <div className="relative">
+            <div className="flex items-center gap-0.5 bg-black/60 p-0.5 rounded-xl border border-zinc-800/60 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {(['all', 'Active', 'Created', 'Completed', 'Disputed', 'Cancelled'] as const).map((tab) => {
                 const count = statusCounts[tab as keyof typeof statusCounts];
                 const isActive = statusFilter === tab;
@@ -463,6 +464,8 @@ export function DealDashboard({
                 );
               })}
             </div>
+            <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#09090b] to-transparent pointer-events-none rounded-r-xl" />
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-700 [&::-webkit-scrollbar-thumb]:rounded-full">
@@ -496,11 +499,11 @@ export function DealDashboard({
                         : 'bg-zinc-900/30 border-zinc-800/50 hover:bg-zinc-800/50 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="font-mono text-sm font-medium text-zinc-200 group-hover:text-emerald-400 transition-colors">
+                    <div className="flex items-start gap-2 mb-2">
+                      <div className="font-mono text-sm font-medium text-zinc-200 group-hover:text-emerald-400 transition-colors min-w-0 flex-1 truncate">
                         {getDealMetadata(deal.id)?.title || `Deal #${deal.id}`}
                       </div>
-                      <Tag color={STATUS_COLORS[status] || 'zinc'}>{STATUS_LABELS[status] || status}</Tag>
+                      <Tag color={STATUS_COLORS[status] || 'zinc'} className="shrink-0">{STATUS_LABELS[status] || status}</Tag>
                     </div>
                     
                     <div className="flex justify-between items-end mt-4">

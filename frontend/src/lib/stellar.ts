@@ -122,6 +122,11 @@ export function getExplorerContractLink(contractId: string): string {
   return `${EXPLORER_URL}/contract/${contractId}`;
 }
 
+// Get explorer link for an account/wallet
+export function getExplorerAccountLink(address: string): string {
+  return `${EXPLORER_URL}/account/${address}`;
+}
+
 // Truncate address for display
 export function truncateAddress(address: string): string {
   if (!address) return '';
