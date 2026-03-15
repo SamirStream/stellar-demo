@@ -6,10 +6,11 @@ import {
   Network, Cpu, Lock,
   TerminalSquare, Activity, Globe2
 } from 'lucide-react';
-import { useStellarWallet } from './hooks/useStellarWallet';
+import { useUnifiedWallet } from './hooks/useUnifiedWallet';
 import { useDealEscrow } from './hooks/useDealEscrow';
 import type { DealData } from './hooks/useDealEscrow';
 import { ConnectWallet } from './components/ConnectWallet';
+import { WalletConnectModal } from './components/WalletConnectModal';
 import { CreateDeal } from './components/CreateDeal';
 import { DealDashboard } from './components/DealDashboard';
 import { SoroswapWidget } from './components/SoroswapWidget';
@@ -207,7 +208,8 @@ export default function App() {
     () => localStorage.getItem('parity-banner-dismissed') === '1'
   );
   
-  const wallet = useStellarWallet();
+  const wallet = useUnifiedWallet();
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const escrow = useDealEscrow(wallet.address, wallet.signTransaction, wallet.refreshBalances);
 
   // Live ticker — fetched on mount (read-only, no wallet needed), shown only on homepage
@@ -263,25 +265,24 @@ export default function App() {
     localStorage.setItem('parity-banner-dismissed', '1');
   }, []);
 
-  // Wrapper around wallet.connect that surfaces errors as toasts.
-  // Needed because requestAccess() in @stellar/freighter-api has no timeout —
-  // if Freighter's Firefox popup fails, the promise hangs silently.
-  const handleConnect = useCallback(async () => {
-    try {
-      await wallet.connect();
-    } catch (err: any) {
-      const msg = (err?.message || '').toLowerCase();
-      if (msg.includes('__connect_timeout__')) {
-        toast(
-          'Wallet connection timed out. Close any open popup, then try again. ' +
-          'If using Freighter on Firefox, try disabling and re-enabling the extension.',
-          'error'
-        );
-      } else if (!msg.includes('cancel') && !msg.includes('reject') && !msg.includes('denied')) {
-        toast('Connection failed. Select Albedo — it works in all browsers without an extension.', 'error');
-      }
+  // Opens the unified connect modal (Privy or StellarWalletsKit tabs).
+  const handleConnect = useCallback(() => {
+    setIsConnectModalOpen(true);
+  }, []);
+
+  // Called by WalletConnectModal when the SWK path throws (timeout, cancel, etc.)
+  const handleSwkError = useCallback((err: Error) => {
+    const msg = (err?.message || '').toLowerCase();
+    if (msg.includes('__connect_timeout__')) {
+      toast(
+        'Wallet connection timed out. Close any open popup, then try again. ' +
+        'If using Freighter on Firefox, try disabling and re-enabling the extension.',
+        'error'
+      );
+    } else if (!msg.includes('cancel') && !msg.includes('reject') && !msg.includes('denied')) {
+      toast('Connection failed. Try Albedo — it works in all browsers without an extension.', 'error');
     }
-  }, [wallet.connect, toast]);
+  }, [toast]);
 
   // Keyboard tab navigation (Alt+1/2/3/4)
   useEffect(() => {
@@ -298,6 +299,11 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [wallet.isConnected]);
 
+  // Close connect modal automatically once a wallet connects
+  useEffect(() => {
+    if (wallet.isConnected) setIsConnectModalOpen(false);
+  }, [wallet.isConnected]);
+
   // Truncate wallet logic
   const truncWallet = wallet.address ? `${wallet.address.slice(0, 4)}...${wallet.address.slice(-4)}` : '';
 
@@ -306,6 +312,15 @@ export default function App() {
       <div className="min-h-screen bg-[#02040a] text-zinc-200 selection:bg-emerald-500/30 overflow-x-hidden relative flex flex-col">
         <GlowingBackground />
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+        <WalletConnectModal
+          isOpen={isConnectModalOpen}
+          onClose={() => setIsConnectModalOpen(false)}
+          privyLogin={wallet.privyLogin}
+          swkConnect={wallet.swkConnect}
+          onSwkError={handleSwkError}
+          isPrivyAppConfigured={!!import.meta.env.VITE_PRIVY_APP_ID}
+        />
 
         {/* Live Ticker — homepage only, real on-chain data */}
         {!wallet.isConnected && tickerItems.length > 0 && (
@@ -365,7 +380,9 @@ export default function App() {
                 <div className="flex items-center gap-4 bg-[#09090b] border border-zinc-800/80 rounded-2xl pl-5 pr-1.5 py-1.5 shadow-xl">
                   <div className="flex flex-col items-end">
                     <span className="text-xs font-mono text-emerald-400 font-bold">{wallet.xlmBalance} XLM</span>
-                    <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">Testnet</span>
+                    <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">
+                      {wallet.activeSource === 'privy' ? 'Privy · Testnet' : 'Testnet'}
+                    </span>
                   </div>
                   {/* Keep wallet.disconnect bound to this click or add a dropdown eventually, for now just click to disconnect */}
                   <div onClick={wallet.disconnect} title="Click to disconnect" className="bg-[#02040a] text-emerald-100 text-xs font-mono font-bold px-4 py-3 rounded-xl border border-zinc-800 hover:border-red-500/50 hover:text-red-400 cursor-pointer transition-all shadow-[inset_0_0_10px_rgba(16,185,129,0.05)] flex items-center gap-2">
