@@ -113,7 +113,7 @@ export function useStellarWallet(): WalletState {
           if (freighterAvail) {
             try {
               // requestAccess() has no built-in timeout — race against 5 s
-              const getAddrPromise = freighterModule.getAddress();
+              const getAddrPromise = freighterModule.getAddress({});
               const timeoutPromise = new Promise<never>((_, rej) =>
                 setTimeout(() => rej(new Error('__timeout__')), 5_000)
               );
