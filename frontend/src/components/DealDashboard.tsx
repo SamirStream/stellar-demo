@@ -1,12 +1,24 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { 
+  ShieldCheck, AlertCircle, Activity, CheckCircle, Clock, Copy, Search, ArrowRight, User, Filter, RefreshCw, Plus
+} from 'lucide-react';
 import { truncateAddress, formatAmount, getExplorerTxLink, getTokenSymbol } from '../lib/stellar';
 import { useToast } from '../App';
 import type { DealData } from '../hooks/useDealEscrow';
 import { getDealMetadata, recordMilestoneEvent, getAllDealEvents, formatEventDateTime, getEventLabel } from '../lib/dealMetadata';
+import { Card, Button, Tag } from './ui/Components';
 
 /* ============================================
-   Constants
+   Constants & Helpers
    ============================================ */
+
+const STATUS_COLORS: Record<string, "emerald" | "amber" | "blue" | "red" | "zinc"> = {
+  Created: 'amber',
+  Active: 'blue',
+  Completed: 'emerald',
+  Cancelled: 'red',
+  Disputed: 'red',
+};
 
 const STATUS_LABELS: Record<string, string> = {
   Created: 'Awaiting Funding',
@@ -14,14 +26,6 @@ const STATUS_LABELS: Record<string, string> = {
   Completed: 'Completed',
   Cancelled: 'Cancelled',
   Disputed: 'Disputed',
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  Created: '#f59e0b',
-  Active: '#3b82f6',
-  Completed: '#10b981',
-  Cancelled: '#ef4444',
-  Disputed: '#ef4444',
 };
 
 const MILESTONE_LABELS: Record<string, string> = {
@@ -32,49 +36,22 @@ const MILESTONE_LABELS: Record<string, string> = {
   Refunded: 'Refunded',
 };
 
-/* ============================================
-   Types
-   ============================================ */
+const MILESTONE_COLORS: Record<string, "emerald" | "amber" | "blue" | "red" | "zinc"> = {
+  Pending: 'zinc',
+  Funded: 'blue',
+  Released: 'emerald',
+  Disputed: 'red',
+  Refunded: 'zinc',
+};
 
-interface DealWithId {
-  id: number;
-  data: DealData;
-}
-
-type StatusFilter = 'all' | 'Active' | 'Created' | 'Completed' | 'Disputed' | 'Cancelled';
-
-interface Props {
-  getDeal: (dealId: number) => Promise<DealData | null>;
-  getDealCount: () => Promise<number>;
-  onDeposit: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
-  onRelease: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
-  onDispute: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
-  onResolveDispute: (dealId: number, milestoneIdx: number, refundBps: number) => Promise<{ txHash: string }>;
-  walletAddress: string;
-  xlmBalance: string;
-  initialDealId?: number | null;
-  onNavigateToCreate?: () => void;
-  onNavigateToFund?: () => void;
-}
-
-/* ============================================
-   Helpers
-   ============================================ */
-
-// Soroban enums deserialize as arrays ["Created"] or objects { Active: [] } — normalize to string
 function normalizeEnum(val: any): string {
   if (typeof val === 'string') return val;
   if (Array.isArray(val)) return val[0];
   return Object.keys(val)[0];
 }
 
-function getDealStatus(deal: DealData): string {
-  return normalizeEnum(deal.status);
-}
-
-function getMilestoneStatus(m: any): string {
-  return normalizeEnum(m.status);
-}
+function getDealStatus(deal: DealData): string { return normalizeEnum(deal.status); }
+function getMilestoneStatus(m: any): string { return normalizeEnum(m.status); }
 
 function getMilestoneProgress(deal: DealData): string {
   const released = deal.milestones.filter((m) => getMilestoneStatus(m) === 'Released').length;
@@ -92,154 +69,30 @@ function isParticipant(deal: DealData, wallet: string): boolean {
   return deal.client === wallet || deal.provider === wallet || deal.connector === wallet;
 }
 
-type ToastType = 'success' | 'error' | 'info';
-// Copy helper
-async function copyToClipboard(text: string, setCopied: (key: string) => void, key: string, toastFn?: (msg: string, type?: ToastType) => void) {
+async function copyToClipboard(text: string, setCopied: (key: string) => void, key: string, toastFn?: (msg: string, type?: 'success'|'error'|'info') => void) {
   try {
     await navigator.clipboard.writeText(text);
     setCopied(key);
     setTimeout(() => setCopied(''), 2000);
     toastFn?.('Copied to clipboard', 'success');
-  } catch {
-    // fallback: do nothing
-  }
+  } catch {}
 }
 
-/* ============================================
-   Inline SVG Icons
-   ============================================ */
+interface DealWithId { id: number; data: DealData; }
+type StatusFilter = 'all' | 'Active' | 'Created' | 'Completed' | 'Disputed' | 'Cancelled';
 
-const CopyIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </svg>
-);
-
-const ShieldIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-  </svg>
-);
-
-const RefreshIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="23 4 23 10 17 10" />
-    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-  </svg>
-);
-
-const PersonIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
-  </svg>
-);
-
-const ArrowLeftIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="19" y1="12" x2="5" y2="12" />
-    <polyline points="12 19 5 12 12 5" />
-  </svg>
-);
-
-/* ============================================
-   Sub-components
-   ============================================ */
-
-function DealCard({ deal, isSelected, role, onClick }: {
-  deal: DealWithId;
-  isSelected: boolean;
-  role: string | null;
-  onClick: () => void;
-}) {
-  const tokenSymbol = getTokenSymbol(deal.data.token);
-  const progress = getMilestoneProgress(deal.data);
-  const isMine = role !== null;
-  const status = getDealStatus(deal.data);
-  const meta = getDealMetadata(deal.id);
-
-  return (
-    <button
-      className={`deal-card${isSelected ? ' deal-card-selected' : ''}${isMine ? ' deal-card-mine' : ''}`}
-      onClick={onClick}
-      type="button"
-    >
-      <div className="deal-card-header">
-        <span className="deal-card-id">{meta?.title || `Deal #${deal.id}`}</span>
-        <span
-          className="status-badge small"
-          style={{ backgroundColor: STATUS_COLORS[status] || '#6b7280' }}
-        >
-          {STATUS_LABELS[status] || status}
-        </span>
-      </div>
-      <div className="deal-card-body">
-        <span className="deal-card-amount">
-          {formatAmount(deal.data.total_amount.toString())} {tokenSymbol}
-        </span>
-        <span className="deal-card-progress">{progress} released</span>
-      </div>
-      {role && <span className="deal-card-role">{role}</span>}
-    </button>
-  );
-}
-
-function DealListSkeleton() {
-  return (
-    <div className="deal-list-skeleton">
-      {[0, 1, 2, 3, 4].map((i) => (
-        <div key={i} className="deal-card-skeleton skeleton" style={{ animationDelay: `${i * 0.1}s` }}>
-          <div className="skeleton skeleton-line short" />
-          <div className="skeleton skeleton-line medium" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DealListEmpty({ hasDeals, isFiltered, onNavigateToCreate, onClearFilters }: {
-  hasDeals: boolean;
-  isFiltered: boolean;
+interface Props {
+  getDeal: (dealId: number) => Promise<DealData | null>;
+  getDealCount: () => Promise<number>;
+  onDeposit: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
+  onRelease: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
+  onDispute: (dealId: number, milestoneIdx: number) => Promise<{ txHash: string }>;
+  onResolveDispute: (dealId: number, milestoneIdx: number, refundBps: number) => Promise<{ txHash: string }>;
+  walletAddress: string;
+  xlmBalance: string;
+  initialDealId?: number | null;
   onNavigateToCreate?: () => void;
-  onClearFilters: () => void;
-}) {
-  if (isFiltered && hasDeals) {
-    return (
-      <div className="deal-list-empty">
-        <p>No deals match your filters.</p>
-        <button className="btn-small" onClick={onClearFilters} type="button">Clear Filters</button>
-      </div>
-    );
-  }
-  return (
-    <div className="deal-list-empty">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
-        <rect x="3" y="3" width="7" height="9" rx="1" />
-        <rect x="14" y="3" width="7" height="5" rx="1" />
-        <rect x="14" y="12" width="7" height="9" rx="1" />
-        <rect x="3" y="16" width="7" height="5" rx="1" />
-      </svg>
-      <h4>No Deals Yet</h4>
-      <p>Create your first escrow deal to get started.</p>
-      {onNavigateToCreate && (
-        <button className="btn-primary" onClick={onNavigateToCreate} type="button">Create a Deal</button>
-      )}
-    </div>
-  );
-}
-
-function DetailEmptyState() {
-  return (
-    <div className="detail-empty-state">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}>
-        <line x1="19" y1="12" x2="5" y2="12" />
-        <polyline points="12 19 5 12 12 5" />
-      </svg>
-      <h4>Select a Deal</h4>
-      <p>Choose a deal from the list to view details and manage milestones.</p>
-    </div>
-  );
+  onNavigateToFund?: () => void;
 }
 
 /* ============================================
@@ -252,39 +105,31 @@ export function DealDashboard({
 }: Props) {
   const toast = useToast();
 
-  // === Deal list state ===
   const [allDeals, setAllDeals] = useState<DealWithId[]>([]);
   const [listLoading, setListLoading] = useState(true);
-  const [listError, setListError] = useState('');
 
-  // === Filters ===
+
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [myDealsOnly, setMyDealsOnly] = useState(true);
 
-  // === Selected deal ===
   const [selectedDealId, setSelectedDealId] = useState<number | null>(initialDealId ?? null);
   const [mobileShowDetail, setMobileShowDetail] = useState(initialDealId !== null && initialDealId !== undefined);
 
-  // === Action state ===
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [lastTxHash, setLastTxHash] = useState('');
   const [splitView, setSplitView] = useState<{ milestoneIdx: number; txHash: string } | null>(null);
 
-  // === Confirmation modal ===
   const [confirmAction, setConfirmAction] = useState<{
     type: 'release' | 'dispute' | 'resolve';
     milestoneIdx: number;
   } | null>(null);
   const [resolveRefundPct, setResolveRefundPct] = useState(50);
 
-  // === Copy feedback ===
   const [copiedKey, setCopiedKey] = useState('');
 
-  // === Data fetching ===
   const fetchAllDeals = useCallback(async () => {
     setListLoading(true);
-    setListError('');
     try {
       const count = await getDealCount();
       if (count === 0) {
@@ -302,26 +147,22 @@ export function DealDashboard({
       );
 
       const deals: DealWithId[] = results
-        .filter((r): r is PromiseFulfilledResult<DealWithId | null> =>
-          r.status === 'fulfilled' && r.value !== null
-        )
+        .filter((r): r is PromiseFulfilledResult<DealWithId | null> => r.status === 'fulfilled' && r.value !== null)
         .map((r) => r.value!)
         .sort((a, b) => b.id - a.id);
 
       setAllDeals(deals);
     } catch (err: any) {
-      setListError(err.message || 'Failed to fetch deals');
+      console.error(err.message || 'Failed to fetch deals');
     } finally {
       setListLoading(false);
     }
   }, [getDeal, getDealCount]);
 
-  // Initial load
   useEffect(() => {
     fetchAllDeals();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Auto-refresh every 30s (ref-based)
   const fetchRef = useRef(fetchAllDeals);
   fetchRef.current = fetchAllDeals;
   useEffect(() => {
@@ -329,16 +170,14 @@ export function DealDashboard({
     return () => clearInterval(interval);
   }, []);
 
-  // When initialDealId changes (from CreateDeal), select it and refresh
   useEffect(() => {
     if (initialDealId !== null && initialDealId !== undefined) {
       setSelectedDealId(initialDealId);
       setMobileShowDetail(true);
       fetchAllDeals();
     }
-  }, [initialDealId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialDealId]);
 
-  // === Derived values ===
   const filteredDeals = useMemo(() => {
     let result = allDeals;
     if (statusFilter !== 'all') {
@@ -351,9 +190,7 @@ export function DealDashboard({
   }, [allDeals, statusFilter, myDealsOnly, walletAddress]);
 
   const statusCounts = useMemo(() => {
-    const base = myDealsOnly
-      ? allDeals.filter((d) => isParticipant(d.data, walletAddress))
-      : allDeals;
+    const base = myDealsOnly ? allDeals.filter((d) => isParticipant(d.data, walletAddress)) : allDeals;
     return {
       all: base.length,
       Active: base.filter((d) => getDealStatus(d.data) === 'Active').length,
@@ -373,13 +210,11 @@ export function DealDashboard({
   const selectedStatus = selectedDeal ? getDealStatus(selectedDeal) : '';
   const selectedMeta = selectedDealId !== null ? getDealMetadata(selectedDealId) : null;
 
-  // Activity log for selected deal
   const activityLog = useMemo(() => {
     if (selectedDealId === null || !selectedDeal) return [];
     return getAllDealEvents(selectedDealId, selectedDeal.milestones.length);
-  }, [selectedDealId, selectedDeal, allDeals]); // re-derive after actions refresh allDeals
+  }, [selectedDealId, selectedDeal, allDeals]);
 
-  // === Split computation ===
   const computeSplit = (milestoneAmount: bigint) => {
     if (!selectedDeal) return null;
     const amount = Number(milestoneAmount);
@@ -390,7 +225,6 @@ export function DealDashboard({
     return { providerCut, connectorCut, protocolCut, total: amount };
   };
 
-  // === Action handlers ===
   const handleDeposit = async (milestoneIdx: number) => {
     if (!selectedDeal || selectedDealId === null) return;
     const milestone = selectedDeal.milestones[milestoneIdx];
@@ -409,11 +243,7 @@ export function DealDashboard({
     try {
       const res = await onDeposit(selectedDealId, milestoneIdx);
       setLastTxHash(res.txHash);
-      recordMilestoneEvent(selectedDealId, milestoneIdx, {
-        action: 'funded',
-        timestamp: new Date().toISOString(),
-        txHash: res.txHash,
-      });
+      recordMilestoneEvent(selectedDealId, milestoneIdx, { action: 'funded', timestamp: new Date().toISOString(), txHash: res.txHash });
       toast('Milestone funded successfully!', 'success');
       await fetchAllDeals();
     } catch (err: any) {
@@ -433,20 +263,11 @@ export function DealDashboard({
       const res = await onRelease(selectedDealId, milestoneIdx);
       setLastTxHash(res.txHash);
       setSplitView({ milestoneIdx, txHash: res.txHash });
-      // Record release event with split details
       const m = selectedDeal?.milestones[milestoneIdx];
       const split = m ? computeSplit(m.amount) : null;
       recordMilestoneEvent(selectedDealId, milestoneIdx, {
-        action: 'released',
-        timestamp: new Date().toISOString(),
-        txHash: res.txHash,
-        ...(split && {
-          split: {
-            providerAmount: split.providerCut.toString(),
-            connectorAmount: split.connectorCut.toString(),
-            protocolAmount: split.protocolCut.toString(),
-          },
-        }),
+        action: 'released', timestamp: new Date().toISOString(), txHash: res.txHash,
+        ...(split && { split: { providerAmount: split.providerCut.toString(), connectorAmount: split.connectorCut.toString(), protocolAmount: split.protocolCut.toString() } }),
       });
       toast('Milestone released — 3-way split executed!', 'success');
       await fetchAllDeals();
@@ -466,11 +287,7 @@ export function DealDashboard({
     try {
       const res = await onDispute(selectedDealId, milestoneIdx);
       setLastTxHash(res.txHash);
-      recordMilestoneEvent(selectedDealId, milestoneIdx, {
-        action: 'disputed',
-        timestamp: new Date().toISOString(),
-        txHash: res.txHash,
-      });
+      recordMilestoneEvent(selectedDealId, milestoneIdx, { action: 'disputed', timestamp: new Date().toISOString(), txHash: res.txHash });
       toast('Dispute filed on-chain', 'info');
       await fetchAllDeals();
     } catch (err: any) {
@@ -487,14 +304,9 @@ export function DealDashboard({
     setError('');
     setConfirmAction(null);
     try {
-      const refundBps = refundPct * 100;
-      const res = await onResolveDispute(selectedDealId, milestoneIdx, refundBps);
+      const res = await onResolveDispute(selectedDealId, milestoneIdx, refundPct * 100);
       setLastTxHash(res.txHash);
-      recordMilestoneEvent(selectedDealId, milestoneIdx, {
-        action: 'resolved',
-        timestamp: new Date().toISOString(),
-        txHash: res.txHash,
-      });
+      recordMilestoneEvent(selectedDealId, milestoneIdx, { action: 'resolved', timestamp: new Date().toISOString(), txHash: res.txHash });
       toast('Dispute resolved successfully', 'success');
       await fetchAllDeals();
     } catch (err: any) {
@@ -505,523 +317,494 @@ export function DealDashboard({
     }
   };
 
-  // === Modal scroll lock + ESC ===
   useEffect(() => {
     if (confirmAction) {
       document.body.style.overflow = 'hidden';
-      const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') setConfirmAction(null);
-      };
+      const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setConfirmAction(null); };
       window.addEventListener('keydown', handleEsc);
-      return () => {
-        document.body.style.overflow = '';
-        window.removeEventListener('keydown', handleEsc);
-      };
+      return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', handleEsc); };
     }
   }, [confirmAction]);
 
-  // Copyable address component
-  const CopyableAddress = ({ address, label }: { address: string; label: string }) => {
+  const CopyableText = ({ text, display, label }: { text: string; display?: string; label: string }) => {
     const key = `addr-${label}`;
+    const [isHovered, setIsHovered] = useState(false);
     return (
       <span
-        className="copyable"
-        onClick={() => copyToClipboard(address, setCopiedKey, key, toast)}
-        title={`Click to copy: ${address}`}
+        className="inline-flex items-center gap-2 cursor-pointer text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 text-xs font-mono"
+        onClick={() => copyToClipboard(text, setCopiedKey, key, toast)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        title={`Click to copy: ${text}`}
       >
-        {truncateAddress(address)}
+        {display || truncateAddress(text)}
         {copiedKey === key ? (
-          <span className="copied-feedback">Copied!</span>
+          <span className="text-emerald-300 text-[10px]">Copied!</span>
         ) : (
-          <span className="copy-icon"><CopyIcon /></span>
+          <Copy size={12} className={`transition-opacity ${isHovered ? 'opacity-100' : 'opacity-50'}`} />
         )}
       </span>
     );
   };
 
-  // === Filter tabs config ===
-  const FILTER_TABS: { key: StatusFilter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'Active', label: 'Active' },
-    { key: 'Created', label: 'Awaiting' },
-    { key: 'Completed', label: 'Completed' },
-    { key: 'Disputed', label: 'Disputed' },
-    { key: 'Cancelled', label: 'Cancelled' },
-  ];
-
   return (
-    <div className="deal-dashboard">
-      {/* Toolbar */}
-      <div className="dashboard-toolbar">
-        <div className="dashboard-toolbar-left">
-          <h3>Deal Dashboard</h3>
-          {!listLoading && <span className="deal-count-badge">{allDeals.length} deal{allDeals.length !== 1 ? 's' : ''}</span>}
+    <div className="w-full max-w-7xl mx-auto space-y-6 animate-fade-in p-4 lg:p-6 pb-24">
+      
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent flex items-center gap-3">
+            <Activity className="text-emerald-400" size={28} />
+            Deal Terminal
+          </h1>
+          <p className="text-zinc-400 mt-1">Manage network executions and escrow ledgers</p>
         </div>
-        <div className="dashboard-toolbar-right">
-          <button
-            className={`my-deals-toggle${myDealsOnly ? ' active' : ''}`}
-            onClick={() => setMyDealsOnly(!myDealsOnly)}
-            type="button"
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <Button 
+            variant="secondary" 
+            onClick={() => setMyDealsOnly(!myDealsOnly)} 
+            icon={User}
+            className={`transition-colors ${myDealsOnly ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' : ''}`}
           >
-            <PersonIcon /> My Deals
-          </button>
-          <button className="refresh-btn" onClick={fetchAllDeals} disabled={listLoading} type="button" title="Refresh">
-            <RefreshIcon />
-          </button>
+            My Escrows
+          </Button>
+          <Button variant="secondary" onClick={fetchAllDeals} disabled={listLoading} icon={RefreshCw}>
+            Sync Ledger
+          </Button>
+          {onNavigateToCreate && (
+            <Button variant="primary" onClick={onNavigateToCreate} icon={Plus}>
+              New Contract
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Status filter tabs */}
-      <div className="status-filters">
-        {FILTER_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            className={`status-filter-btn${statusFilter === tab.key ? ' active' : ''}`}
-            onClick={() => setStatusFilter(tab.key)}
-            type="button"
-          >
-            {tab.label}
-            {statusCounts[tab.key] > 0 && <span className="filter-count">{statusCounts[tab.key]}</span>}
-          </button>
-        ))}
-      </div>
+      {/* Main Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
+        
+        {/* Left Panel: Deal List */}
+        <Card className={`lg:col-span-4 flex flex-col h-[calc(100vh-200px)] min-h-[600px] overflow-hidden ${mobileShowDetail ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="p-4 border-b border-zinc-800/50 bg-zinc-900/50 flex flex-col gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+              <input 
+                type="text" 
+                placeholder="Search deals..." 
+                className="w-full bg-black/40 border border-zinc-800 rounded-lg pl-9 pr-4 py-2 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all placeholder:text-zinc-600"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {['all', 'Active', 'Created', 'Completed', 'Disputed', 'Cancelled'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setStatusFilter(tab as StatusFilter)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${
+                    statusFilter === tab 
+                      ? 'bg-zinc-800 border-zinc-700 text-zinc-100' 
+                      : 'bg-transparent border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+                  }`}
+                >
+                  {tab === 'all' ? 'All' : STATUS_LABELS[tab] || tab}
+                  {statusCounts[tab as keyof typeof statusCounts] > 0 && (
+                    <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === tab ? 'bg-zinc-700 text-zinc-300' : 'bg-zinc-800/50 text-zinc-500'}`}>
+                      {statusCounts[tab as keyof typeof statusCounts]}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {listError && (
-        <div className="error-message">
-          {listError}
-          <button type="button" className="btn-retry" onClick={fetchAllDeals}>Retry</button>
-        </div>
-      )}
+          <div className="flex-1 overflow-y-auto p-2 space-y-2">
+            {listLoading ? (
+              [...Array(5)].map((_, i) => (
+                <div key={i} className="animate-pulse p-4 rounded-xl border border-zinc-800/50 bg-zinc-900/20">
+                  <div className="h-4 bg-zinc-800 rounded w-1/3 mb-3"></div>
+                  <div className="h-3 bg-zinc-800 rounded w-1/4 mb-2"></div>
+                  <div className="h-3 bg-zinc-800 rounded w-1/2"></div>
+                </div>
+              ))
+            ) : filteredDeals.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-zinc-500 p-6 text-center">
+                <Filter size={32} className="mb-4 opacity-20" />
+                <h4 className="text-zinc-400 font-medium mb-1">No contracts found</h4>
+                <p className="text-sm">Try adjusting your filters or create a new deal.</p>
+              </div>
+            ) : (
+              filteredDeals.map((deal) => {
+                const status = getDealStatus(deal.data);
+                const role = getRole(deal.data, walletAddress);
+                const isSelected = selectedDealId === deal.id;
+                
+                return (
+                  <div
+                    key={deal.id}
+                    onClick={() => { setSelectedDealId(deal.id); setMobileShowDetail(true); setSplitView(null); setLastTxHash(''); setError(''); }}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 group ${
+                      isSelected 
+                        ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
+                        : 'bg-zinc-900/30 border-zinc-800/50 hover:bg-zinc-800/50 hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="font-mono text-sm font-medium text-zinc-200 group-hover:text-emerald-400 transition-colors">
+                        {getDealMetadata(deal.id)?.title || `Deal #${deal.id}`}
+                      </div>
+                      <Tag color={STATUS_COLORS[status] || 'zinc'}>{STATUS_LABELS[status] || status}</Tag>
+                    </div>
+                    
+                    <div className="flex justify-between items-end mt-4">
+                      <div>
+                        <div className="text-lg font-semibold text-zinc-100">
+                          {formatAmount(deal.data.total_amount.toString())} <span className="text-xs text-zinc-500">{getTokenSymbol(deal.data.token)}</span>
+                        </div>
+                        <div className="text-xs text-zinc-500 flex items-center gap-1 mt-1">
+                          <Clock size={12} /> {getMilestoneProgress(deal.data)} Milestones
+                        </div>
+                      </div>
+                      {role && (
+                        <div className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-zinc-800 text-zinc-400">
+                          {role}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </Card>
 
-      {/* Main layout: list + detail */}
-      <div className="dashboard-layout">
-        {/* LEFT: Deal List */}
-        <div className={`deal-list-panel${mobileShowDetail ? ' mobile-hidden' : ''}`}>
-          {listLoading && <DealListSkeleton />}
-
-          {!listLoading && filteredDeals.length === 0 && (
-            <DealListEmpty
-              hasDeals={allDeals.length > 0}
-              isFiltered={statusFilter !== 'all' || myDealsOnly}
-              onNavigateToCreate={onNavigateToCreate}
-              onClearFilters={() => { setStatusFilter('all'); setMyDealsOnly(false); }}
-            />
+        {/* Right Panel: Deal Details */}
+        <div className={`lg:col-span-8 h-full space-y-6 ${!mobileShowDetail ? 'hidden lg:block' : 'block'}`}>
+          {mobileShowDetail && (
+            <button 
+              onClick={() => setMobileShowDetail(false)}
+              className="lg:hidden flex items-center gap-2 text-zinc-400 hover:text-zinc-200 mb-4 transition-colors p-2 -ml-2 rounded-lg hover:bg-zinc-800/50"
+            >
+              <ArrowRight className="rotate-180" size={16} /> Back to Ledger
+            </button>
           )}
 
-          {!listLoading && filteredDeals.map((deal) => (
-            <DealCard
-              key={deal.id}
-              deal={deal}
-              isSelected={selectedDealId === deal.id}
-              role={getRole(deal.data, walletAddress)}
-              onClick={() => {
-                setSelectedDealId(deal.id);
-                setMobileShowDetail(true);
-                setSplitView(null);
-                setLastTxHash('');
-                setError('');
-              }}
-            />
-          ))}
-        </div>
-
-        {/* RIGHT: Deal Detail */}
-        <div className={`deal-detail-panel${!mobileShowDetail ? ' mobile-hidden' : ''}`}>
-          {/* Mobile back button */}
-          <button
-            className="mobile-back-btn"
-            onClick={() => setMobileShowDetail(false)}
-            type="button"
-          >
-            <ArrowLeftIcon /> Back to list
-          </button>
-
-          {selectedDealId === null || !selectedDeal ? (
-            <DetailEmptyState />
+          {!selectedDeal || selectedDealId === null ? (
+            <Card className="h-[calc(100vh-200px)] min-h-[600px] flex flex-col items-center justify-center text-zinc-500 text-center p-8 bg-zinc-900/20 border-dashed border-zinc-800">
+              <Activity size={48} className="mb-6 opacity-20" />
+              <h3 className="text-xl font-semibold text-zinc-300 mb-2">Select a Contract</h3>
+              <p className="max-w-md">Choose an escrow execution from the ledger to view metadata, transparent routing, and milestone signals.</p>
+            </Card>
           ) : (
             <>
-              {/* Success banner */}
+              {/* Contextual Messages */}
               {lastTxHash && (
-                <div className="success-banner">
-                  Transaction confirmed!{' '}
-                  <a href={getExplorerTxLink(lastTxHash)} target="_blank" rel="noopener noreferrer">
-                    View on Explorer
-                  </a>
-                  <span
-                    className="copyable inline-copy"
-                    onClick={() => copyToClipboard(lastTxHash, setCopiedKey, 'txhash', toast)}
-                    title="Copy transaction hash"
-                  >
-                    {copiedKey === 'txhash' ? 'Copied!' : <CopyIcon />}
-                  </span>
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3 animate-fade-in shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+                  <CheckCircle className="text-emerald-400 shrink-0 mt-0.5" size={18} />
+                  <div>
+                    <h4 className="text-emerald-400 font-medium text-sm">Operation Confirmed</h4>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-emerald-500/70">
+                      <a href={getExplorerTxLink(lastTxHash)} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-300 underline underline-offset-2">View on Explorer</a>
+                      <span className="cursor-pointer hover:text-emerald-300 flex items-center gap-1" onClick={() => copyToClipboard(lastTxHash, setCopiedKey, 'txhash', toast)}>
+                        {copiedKey === 'txhash' ? 'Copied!' : <><Copy size={10} /> Hash</>}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
-
-              {/* Error */}
               {error && (
-                <div className="error-message">
-                  {error}
-                  {error.includes('Insufficient balance') && onNavigateToFund ? (
-                    <button type="button" className="btn-retry" onClick={onNavigateToFund}>Fund Wallet</button>
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
+                  <AlertCircle className="text-red-400 shrink-0 mt-0.5" size={18} />
+                  <div className="flex-1">
+                    <h4 className="text-red-400 font-medium text-sm">Execution Failed</h4>
+                    <p className="text-red-500/70 text-xs mt-1">{error}</p>
+                  </div>
+                  {(error.includes('Insufficient balance') && onNavigateToFund) ? (
+                    <Button variant="secondary" onClick={onNavigateToFund} className="text-xs py-1.5 px-3">Fund Wallet</Button>
                   ) : (
-                    <button type="button" className="btn-retry" onClick={fetchAllDeals}>Retry</button>
+                    <Button variant="secondary" onClick={fetchAllDeals} className="text-xs py-1.5 px-3">Retry Sync</Button>
                   )}
                 </div>
               )}
 
-              {/* 3-Way Split Visualization */}
+              {/* Detail Header Card */}
+              <Card className="p-6 relative overflow-hidden bg-[#02040a]">
+                <div className="absolute top-0 right-0 p-32 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
+                
+                <div className="flex flex-col md:flex-row justify-between items-start gap-6 relative z-10">
+                  <div className="space-y-4 flex-1 w-full flex-wrap">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Tag color={STATUS_COLORS[selectedStatus] || 'zinc'}>{STATUS_LABELS[selectedStatus] || selectedStatus}</Tag>
+                      {(selectedStatus === 'Active' || selectedStatus === 'Created') && (
+                        <div className="text-xs text-emerald-400 font-medium flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                          <ShieldCheck size={14} /> Escrow Protected
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <h2 className="text-2xl font-bold text-zinc-100 flex items-center gap-3">
+                        {selectedMeta?.title || `Dynamic Contract #${selectedDealId}`}
+                        <CopyableText text={String(selectedDealId)} display={`ID: ${selectedDealId}`} label="dealid" />
+                      </h2>
+                      {selectedMeta?.description && <p className="text-zinc-400 mt-2 text-sm">{selectedMeta.description}</p>}
+                    </div>
+                    
+                    {selectedMeta?.createdAt && (
+                      <div className="text-xs text-zinc-500 flex items-center gap-1.5">
+                        <Clock size={14} /> Created {formatEventDateTime(selectedMeta.createdAt)}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="md:text-right bg-zinc-900/50 p-4 rounded-xl border border-zinc-800 w-full md:w-auto">
+                    <div className="text-xs text-zinc-500 mb-1">Total Locked Value</div>
+                    <div className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                      {formatAmount(selectedDeal.total_amount.toString())} <span className="text-sm font-medium">{tokenSymbol}</span>
+                    </div>
+                    <div className="text-xs text-zinc-400 mt-2 flex flex-col gap-1 items-end">
+                      <span>Platform Routing: {selectedDeal.platform_fee_bps / 100}%</span>
+                      <span>BD Share: {selectedDeal.connector_share_bps / 100}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Participant Metadata Routing */}
+                <div className="mt-8 pt-6 border-t border-zinc-800/50 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { label: 'Client (Depositor)', address: selectedDeal.client },
+                    { label: 'Provider (Receiver)', address: selectedDeal.provider },
+                    { label: 'Network BD (Connector)', address: selectedDeal.connector }
+                  ].map((p, i) => (
+                    <div key={i} className="bg-black/40 p-3 rounded-lg border border-zinc-800/50 flex flex-col gap-1.5">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 flex justify-between">
+                        {p.label} {p.address === walletAddress && <span className="text-emerald-400 bg-emerald-500/10 px-1 rounded animate-pulse">YOU</span>}
+                      </span>
+                      <CopyableText text={p.address} label={`participant-${i}`} />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Intelligent Split Execution Visualization */}
               {splitView && (() => {
                 const m = selectedDeal.milestones[splitView.milestoneIdx];
                 const split = m ? computeSplit(m.amount) : null;
                 if (!split) return null;
-                const pctProvider = ((split.providerCut / split.total) * 100).toFixed(1);
-                const pctConnector = ((split.connectorCut / split.total) * 100).toFixed(1);
-                const pctProtocol = ((split.protocolCut / split.total) * 100).toFixed(1);
+                const p1 = (split.providerCut/split.total)*100;
+                const p2 = (split.connectorCut/split.total)*100;
+                const p3 = (split.protocolCut/split.total)*100;
+                
                 return (
-                  <div className="split-visualization">
-                    <h4>Atomic 3-Way Split Executed</h4>
-                    <p className="split-subtitle">Milestone {splitView.milestoneIdx + 1} released in a single atomic transaction</p>
-                    <div className="split-bar">
-                      <div className="split-segment provider" style={{ flex: split.providerCut }}>{pctProvider}%</div>
-                      <div className="split-segment connector" style={{ flex: split.connectorCut }}>{pctConnector}%</div>
-                      <div className="split-segment protocol" style={{ flex: split.protocolCut }}>{pctProtocol}%</div>
-                    </div>
-                    <div className="split-legend">
-                      <div className="split-legend-item">
-                        <span className="legend-dot provider"></span>
-                        <span>Provider: {formatAmount(split.providerCut.toString())} {tokenSymbol}</span>
+                  <Card className="p-6 border-emerald-500/30 bg-emerald-500/5 animate-fade-in">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+                        <ArrowRight size={20} />
                       </div>
-                      <div className="split-legend-item">
-                        <span className="legend-dot connector"></span>
-                        <span>Connector: {formatAmount(split.connectorCut.toString())} {tokenSymbol}</span>
-                      </div>
-                      <div className="split-legend-item">
-                        <span className="legend-dot protocol"></span>
-                        <span>Protocol: {formatAmount(split.protocolCut.toString())} {tokenSymbol}</span>
+                      <div>
+                        <h3 className="text-lg font-bold text-emerald-400">Atomic Value Routing Executed</h3>
+                        <p className="text-xs text-emerald-500/70">Single transaction split resolution for Milestone {splitView.milestoneIdx + 1}</p>
                       </div>
                     </div>
-                    {splitView.txHash && (
-                      <a href={getExplorerTxLink(splitView.txHash)} target="_blank" rel="noopener noreferrer" className="explorer-link">
-                        Verify on Stellar Explorer &rarr;
-                      </a>
-                    )}
-                  </div>
+                    
+                    <div className="h-4 flex rounded-full overflow-hidden bg-black border border-zinc-800 mb-4">
+                      <div className="bg-emerald-500" style={{ width: `${p1}%` }}></div>
+                      <div className="bg-blue-500" style={{ width: `${p2}%` }}></div>
+                      <div className="bg-purple-500" style={{ width: `${p3}%` }}></div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="flex flex-col gap-1 p-3 bg-black/40 rounded-lg border border-emerald-500/20">
+                        <div className="text-xs text-zinc-400 flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div>Provider</div>
+                        <div className="font-mono text-emerald-400">{formatAmount(split.providerCut.toString())} {tokenSymbol} <span className="opacity-50 text-xs">({p1.toFixed(1)}%)</span></div>
+                      </div>
+                      <div className="flex flex-col gap-1 p-3 bg-black/40 rounded-lg border border-blue-500/20">
+                        <div className="text-xs text-zinc-400 flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div>BD Connector</div>
+                        <div className="font-mono text-blue-400">{formatAmount(split.connectorCut.toString())} {tokenSymbol} <span className="opacity-50 text-xs">({p2.toFixed(1)}%)</span></div>
+                      </div>
+                      <div className="flex flex-col gap-1 p-3 bg-black/40 rounded-lg border border-purple-500/20">
+                        <div className="text-xs text-zinc-400 flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-purple-500"></div>Protocol</div>
+                        <div className="font-mono text-purple-400">{formatAmount(split.protocolCut.toString())} {tokenSymbol} <span className="opacity-50 text-xs">({p3.toFixed(1)}%)</span></div>
+                      </div>
+                    </div>
+                  </Card>
                 );
               })()}
 
-              {/* Deal header */}
-              <div className="deal-header">
-                <div className="deal-status">
-                  <span
-                    className="status-badge"
-                    style={{ backgroundColor: STATUS_COLORS[selectedStatus] || '#6b7280' }}
-                  >
-                    {STATUS_LABELS[selectedStatus] || selectedStatus}
-                  </span>
-                  <span className="deal-id-label">
-                    {selectedMeta?.title || `Deal #${selectedDealId}`}
-                    <span
-                      className="copyable inline-copy"
-                      onClick={() => copyToClipboard(String(selectedDealId), setCopiedKey, 'dealid', toast)}
-                      title="Copy Deal ID"
-                    >
-                      {copiedKey === 'dealid' ? <span className="copied-feedback">Copied!</span> : <CopyIcon />}
-                    </span>
-                  </span>
-                  {(selectedStatus === 'Active' || selectedStatus === 'Created') && (
-                    <span className="escrow-badge">
-                      <ShieldIcon /> Escrow Protected
-                    </span>
-                  )}
-                </div>
-                <div className="deal-amount">
-                  {formatAmount(selectedDeal.total_amount.toString())} {tokenSymbol}
-                </div>
-                {selectedMeta?.description && (
-                  <p className="deal-description">{selectedMeta.description}</p>
-                )}
-                {selectedMeta?.createdAt && (
-                  <p className="deal-created-at">Created {formatEventDateTime(selectedMeta.createdAt)}</p>
-                )}
-              </div>
-
-              {/* Completion banner */}
-              {selectedStatus === 'Completed' && (
-                <div className="completion-banner">
-                  <span className="completion-icon">&#10003;</span>
-                  Deal completed — all milestones released. Provider reputation incremented on-chain.
-                </div>
-              )}
-
-              {/* Participants */}
-              <div className="participants">
-                <div className="participant">
-                  <span className="label">Client</span>
-                  <CopyableAddress address={selectedDeal.client} label="client" />
-                  {selectedDeal.client === walletAddress && <span className="you-badge">You</span>}
-                </div>
-                <div className="participant">
-                  <span className="label">Provider</span>
-                  <CopyableAddress address={selectedDeal.provider} label="provider" />
-                  {selectedDeal.provider === walletAddress && <span className="you-badge">You</span>}
-                </div>
-                <div className="participant">
-                  <span className="label">Connector</span>
-                  <CopyableAddress address={selectedDeal.connector} label="connector" />
-                  {selectedDeal.connector === walletAddress && <span className="you-badge">You</span>}
-                </div>
-              </div>
-
-              <div className="deal-meta">
-                <span>Platform Fee: {selectedDeal.platform_fee_bps / 100}%</span>
-                <span>Connector Share: {selectedDeal.connector_share_bps / 100}%</span>
-              </div>
-
-              {/* Milestones */}
-              <h4>Milestones</h4>
-              <div className="milestone-timeline">
-                {selectedDeal.milestones.map((m: any, i: number) => {
-                  const status = getMilestoneStatus(m);
-                  const isClient = selectedDeal.client === walletAddress;
-                  const isParty = selectedDeal.client === walletAddress || selectedDeal.provider === walletAddress;
-                  const isLast = i === selectedDeal.milestones.length - 1;
-
-                  return (
-                    <div key={i} className="timeline-item stagger-item">
-                      <div className="timeline-track">
-                        <div className={`timeline-node timeline-node-${status.toLowerCase()}`}>
-                          {i + 1}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* Milestone Execution Stack */}
+                <div className="lg:col-span-8 space-y-4">
+                  <h3 className="text-lg font-semibold text-zinc-100 mb-4 px-1 flex items-center gap-2">
+                    <Activity size={18} className="text-zinc-500" /> Execution Milestones
+                  </h3>
+                  
+                  <div className="space-y-4 pl-2 lg:pl-0 border-l border-zinc-800 lg:border-l-0 ml-4 lg:ml-0 relative">
+                    <div className="absolute top-0 bottom-0 left-[15px] lg:left-[21px] w-px bg-zinc-800/50 hidden lg:block z-0"></div>
+                    
+                    {selectedDeal.milestones.map((m: any, i: number) => {
+                      const status = getMilestoneStatus(m);
+                      const isClient = selectedDeal.client === walletAddress;
+                      const isParty = selectedDeal.client === walletAddress || selectedDeal.provider === walletAddress;
+                      
+                      return (
+                        <div key={i} className={`relative flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-center bg-[#02040a] border ${status === 'Active' || status === 'Funded' ? 'border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'border-zinc-800/50'} p-4 lg:p-5 rounded-2xl z-10 animate-fade-in`} style={{ animationDelay: `${i*100}ms` }}>
+                          
+                          <div className={`hidden lg:flex shrink-0 w-10 h-10 rounded-full border-2 items-center justify-center font-bold text-sm bg-black ${status === 'Released' ? 'border-emerald-500 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : status === 'Funded' ? 'border-blue-500 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'border-zinc-700 text-zinc-500'}`}>
+                            {status === 'Released' ? <CheckCircle size={16} /> : (i + 1)}
+                          </div>
+                          
+                          <div className="flex-1 space-y-2">
+                            <div className="flex flex-wrap justify-between items-start gap-2">
+                              <div>
+                                <h4 className="font-semibold text-zinc-200">{selectedMeta?.milestoneNames?.[i] || `Milestone ${i + 1}`}</h4>
+                                <div className="text-xs text-zinc-500 mt-0.5">Disbursement Parameter</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-mono font-bold text-zinc-200">{formatAmount(m.amount.toString())} {tokenSymbol}</div>
+                                <div className="mt-1 flex justify-end"><Tag color={MILESTONE_COLORS[status] || 'zinc'}>{MILESTONE_LABELS[status] || status}</Tag></div>
+                              </div>
+                            </div>
+                            
+                            <div className="pt-3 flex flex-wrap gap-2 justify-end w-full">
+                              {status === 'Pending' && isClient && (
+                                <Button onClick={() => handleDeposit(i)} disabled={actionLoading === `deposit-${i}`} className="text-xs py-1.5 px-4">
+                                  {actionLoading === `deposit-${i}` ? 'Signing...' : 'Fund Escrow Node'}
+                                </Button>
+                              )}
+                              {status === 'Funded' && isClient && (
+                                <>
+                                  <Button variant="secondary" onClick={() => setConfirmAction({ type: 'dispute', milestoneIdx: i })} disabled={!!actionLoading} className="text-xs py-1.5 px-3 text-red-400 hover:bg-red-500/10 border-red-500/20">
+                                    Flags Dispute
+                                  </Button>
+                                  <Button variant="primary" onClick={() => setConfirmAction({ type: 'release', milestoneIdx: i })} disabled={!!actionLoading} className="text-xs py-1.5 px-4 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)]">
+                                    Approve & Release
+                                  </Button>
+                                </>
+                              )}
+                              {status === 'Funded' && !isClient && isParty && (
+                                <Button variant="secondary" onClick={() => setConfirmAction({ type: 'dispute', milestoneIdx: i })} disabled={!!actionLoading} className="text-xs py-1.5 px-3 text-red-400 border-red-500/20">
+                                  Flag Dispute
+                                </Button>
+                              )}
+                              {status === 'Disputed' && (
+                                <Button variant="primary" onClick={() => { setResolveRefundPct(50); setConfirmAction({ type: 'resolve', milestoneIdx: i }); }} disabled={!!actionLoading} className="text-xs py-1.5">
+                                  {actionLoading === `resolve-${i}` ? 'Resolving...' : 'Resolve Arbitration'}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        {!isLast && (
-                          <div className={`timeline-line ${status === 'Released' ? 'timeline-line-done' : ''}`} />
-                        )}
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Sidebar: Signal Data */}
+                <div className="lg:col-span-4 space-y-6">
+                  <Card className="p-5">
+                    <h4 className="text-xs uppercase font-bold tracking-wider text-zinc-500 mb-4 border-b border-zinc-800 pb-2">Vault Analytics</h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between items-center text-zinc-400">
+                        <span>Unlocked</span>
+                        <span className="font-mono text-emerald-400 border-b border-emerald-500/30">{formatAmount(selectedDeal.milestones.filter((m: any) => getMilestoneStatus(m) === 'Released').reduce((sum: number, m: any) => sum + Number(m.amount), 0).toString())} {tokenSymbol}</span>
                       </div>
-
-                      <div className="timeline-content">
-                        <div className="milestone-info">
-                          <span className="milestone-name">
-                            {selectedMeta?.milestoneNames?.[i] || `Milestone ${i + 1}`}
-                          </span>
-                          <span className={`status-badge small status-${status.toLowerCase()}`}>
-                            {MILESTONE_LABELS[status] || status}
-                          </span>
-                          <span className="milestone-amount-display">
-                            {formatAmount(m.amount.toString())} {tokenSymbol}
-                          </span>
-                        </div>
-
-                        <div className="milestone-actions">
-                          {status === 'Pending' && isClient && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeposit(i)}
-                              disabled={actionLoading === `deposit-${i}`}
-                              className="btn-fund"
-                            >
-                              {actionLoading === `deposit-${i}` ? 'Depositing...' : 'Fund'}
-                            </button>
-                          )}
-                          {status === 'Funded' && isClient && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmAction({ type: 'release', milestoneIdx: i })}
-                                disabled={actionLoading === `release-${i}`}
-                                className="btn-release"
-                              >
-                                {actionLoading === `release-${i}` ? 'Releasing...' : 'Approve & Release'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmAction({ type: 'dispute', milestoneIdx: i })}
-                                disabled={!!actionLoading}
-                                className="btn-dispute"
-                              >
-                                Dispute
-                              </button>
-                            </>
-                          )}
-                          {status === 'Funded' && !isClient && isParty && (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmAction({ type: 'dispute', milestoneIdx: i })}
-                              disabled={!!actionLoading}
-                              className="btn-dispute"
-                            >
-                              Dispute
-                            </button>
-                          )}
-                          {status === 'Disputed' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setResolveRefundPct(50);
-                                setConfirmAction({ type: 'resolve', milestoneIdx: i });
-                              }}
-                              disabled={!!actionLoading}
-                              className="btn-resolve"
-                            >
-                              {actionLoading === `resolve-${i}` ? 'Resolving...' : 'Resolve'}
-                            </button>
-                          )}
-                          {status === 'Released' && (
-                            <span className="released-check">&#10003; Paid</span>
-                          )}
-                        </div>
+                      <div className="flex justify-between items-center text-zinc-400">
+                        <span>Secured</span>
+                        <span className="font-mono text-blue-400 border-b border-blue-500/30 animate-pulse">{formatAmount(selectedDeal.milestones.filter((m: any) => getMilestoneStatus(m) === 'Funded').reduce((sum: number, m: any) => sum + Number(m.amount), 0).toString())} {tokenSymbol}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-zinc-400">
+                        <span>Pending</span>
+                        <span className="font-mono text-zinc-300">{formatAmount(selectedDeal.milestones.filter((m: any) => getMilestoneStatus(m) === 'Pending').reduce((sum: number, m: any) => sum + Number(m.amount), 0).toString())} {tokenSymbol}</span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </Card>
 
-              {/* Financial Summary */}
-              <div className="financial-summary">
-                <h4>Financial Summary</h4>
-                <div className="financial-grid">
-                  <div className="financial-item">
-                    <span className="financial-label">Total Deal Value</span>
-                    <span className="financial-value">{formatAmount(selectedDeal.total_amount.toString())} {tokenSymbol}</span>
-                  </div>
-                  <div className="financial-item">
-                    <span className="financial-label">Platform Fee</span>
-                    <span className="financial-value">{selectedDeal.platform_fee_bps / 100}%</span>
-                  </div>
-                  <div className="financial-item">
-                    <span className="financial-label">Milestones Released</span>
-                    <span className="financial-value">{getMilestoneProgress(selectedDeal)}</span>
-                  </div>
-                  <div className="financial-item">
-                    <span className="financial-label">Amount Released</span>
-                    <span className="financial-value">
-                      {formatAmount(
-                        selectedDeal.milestones
-                          .filter((m: any) => getMilestoneStatus(m) === 'Released')
-                          .reduce((sum: number, m: any) => sum + Number(m.amount), 0)
-                          .toString()
-                      )} {tokenSymbol}
-                    </span>
-                  </div>
-                  <div className="financial-item">
-                    <span className="financial-label">In Escrow</span>
-                    <span className="financial-value highlight-escrow">
-                      {formatAmount(
-                        selectedDeal.milestones
-                          .filter((m: any) => getMilestoneStatus(m) === 'Funded')
-                          .reduce((sum: number, m: any) => sum + Number(m.amount), 0)
-                          .toString()
-                      )} {tokenSymbol}
-                    </span>
-                  </div>
-                  <div className="financial-item">
-                    <span className="financial-label">Remaining</span>
-                    <span className="financial-value">
-                      {formatAmount(
-                        selectedDeal.milestones
-                          .filter((m: any) => getMilestoneStatus(m) === 'Pending')
-                          .reduce((sum: number, m: any) => sum + Number(m.amount), 0)
-                          .toString()
-                      )} {tokenSymbol}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Activity Log */}
-              {activityLog.length > 0 && (
-                <div className="activity-feed">
-                  <h4>Activity Log</h4>
-                  <div className="activity-list">
-                    {activityLog.map((event, i) => (
-                      <div key={i} className={`activity-item activity-${event.action}`}>
-                        <div className="activity-dot" />
-                        <div className="activity-content">
-                          <div className="activity-header">
-                            <span className="activity-label">{getEventLabel(event.action)}</span>
-                            <span className="activity-milestone">
-                              {selectedMeta?.milestoneNames?.[event.milestoneIdx] || `Milestone ${event.milestoneIdx + 1}`}
-                            </span>
-                          </div>
-                          <div className="activity-time">{formatEventDateTime(event.timestamp)}</div>
-                          {event.split && (
-                            <div className="activity-split">
-                              Provider: {formatAmount(event.split.providerAmount)} ·
-                              Connector: {formatAmount(event.split.connectorAmount)} ·
-                              Protocol: {formatAmount(event.split.protocolAmount)}
+                  {activityLog.length > 0 && (
+                    <Card className="p-5">
+                      <h4 className="text-xs uppercase font-bold tracking-wider text-zinc-500 mb-4 border-b border-zinc-800 pb-2">Event Ledger</h4>
+                      <div className="space-y-4">
+                        {activityLog.map((event, i) => (
+                          <div key={i} className="flex gap-3 text-sm items-start relative before:absolute before:inset-y-0 before:left-[5px] before:w-px before:bg-zinc-800/50">
+                            <div className={`w-3 h-3 rounded-full mt-1 relative z-10 border-2 border-[#02040a] ${event.action === 'funded' ? 'bg-blue-500' : event.action === 'released' || event.action === 'resolved' ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+                            <div className="flex-1 space-y-1">
+                              <div className="text-zinc-200">
+                                {getEventLabel(event.action)} <span className="text-zinc-500">· {selectedMeta?.milestoneNames?.[event.milestoneIdx] || `MS${event.milestoneIdx + 1}`}</span>
+                              </div>
+                              <div className="text-xs text-zinc-600">{formatEventDateTime(event.timestamp)}</div>
+                              {event.txHash && (
+                                <a href={getExplorerTxLink(event.txHash)} target="_blank" rel="noopener noreferrer" className="text-[10px] inline-flex items-center gap-1 text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                  Trace <ArrowRight size={8} className="-rotate-45" />
+                                </a>
+                              )}
                             </div>
-                          )}
-                          {event.txHash && (
-                            <a
-                              href={getExplorerTxLink(event.txHash)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="activity-tx-link"
-                            >
-                              View Transaction
-                            </a>
-                          )}
-                        </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </Card>
+                  )}
                 </div>
-              )}
+
+              </div>
             </>
           )}
         </div>
       </div>
 
-      {/* Confirmation Modal */}
+      {/* Confirmation Modal overlay rendering */}
       {confirmAction && selectedDeal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Confirmation dialog" onClick={() => setConfirmAction(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in" onClick={() => setConfirmAction(null)}>
+          <Card className="w-full max-w-md p-6 border-zinc-700 bg-[#02040a] shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            
             {confirmAction.type === 'release' && (() => {
               const m = selectedDeal.milestones[confirmAction.milestoneIdx];
               const split = m ? computeSplit(m.amount) : null;
               return (
-                <>
-                  <h3>Confirm Milestone Release</h3>
-                  <p className="modal-subtitle">
-                    This action is irreversible. Funds will be split atomically:
-                  </p>
+                <div className="space-y-6">
+                  <div className="text-center space-y-2">
+                    <div className="mx-auto w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4">
+                       <ShieldCheck className="text-emerald-400" size={24} />
+                    </div>
+                    <h3 className="text-xl font-bold text-zinc-100">Authorize Execution</h3>
+                    <p className="text-sm text-zinc-400">This action pushes funds over the network. It cannot be reversed. Verify the transparent value split.</p>
+                  </div>
+
                   {split && (
-                    <div className="modal-split-preview">
-                      <div className="modal-split-row">
-                        <span className="legend-dot provider"></span>
-                        <span>Provider</span>
-                        <span className="modal-split-amount">{formatAmount(split.providerCut.toString())} {tokenSymbol}</span>
+                    <div className="bg-black/50 border border-zinc-800 rounded-xl p-4 space-y-3 font-mono text-sm">
+                      <div className="flex justify-between items-center text-emerald-400">
+                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>Provider</span>
+                        <span>{formatAmount(split.providerCut.toString())}</span>
                       </div>
-                      <div className="modal-split-row">
-                        <span className="legend-dot connector"></span>
-                        <span>Connector</span>
-                        <span className="modal-split-amount">{formatAmount(split.connectorCut.toString())} {tokenSymbol}</span>
+                      <div className="flex justify-between items-center text-blue-400">
+                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>Connector</span>
+                        <span>{formatAmount(split.connectorCut.toString())}</span>
                       </div>
-                      <div className="modal-split-row">
-                        <span className="legend-dot protocol"></span>
-                        <span>Protocol</span>
-                        <span className="modal-split-amount">{formatAmount(split.protocolCut.toString())} {tokenSymbol}</span>
+                      <div className="flex justify-between items-center text-purple-400">
+                        <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>Protocol</span>
+                        <span>{formatAmount(split.protocolCut.toString())}</span>
                       </div>
                     </div>
                   )}
-                  <div className="modal-actions">
-                    <button type="button" onClick={() => setConfirmAction(null)} className="btn-secondary">Cancel</button>
-                    <button type="button" onClick={() => handleRelease(confirmAction.milestoneIdx)} className="btn-release">Confirm Release</button>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="secondary" className="flex-1" onClick={() => setConfirmAction(null)}>Cancel</Button>
+                    <Button variant="primary" className="flex-1" onClick={() => handleRelease(confirmAction.milestoneIdx)}>Sign Transaction</Button>
                   </div>
-                </>
+                </div>
               );
             })()}
 
             {confirmAction.type === 'dispute' && (
-              <>
-                <h3>Confirm Dispute</h3>
-                <p className="modal-subtitle">
-                  Disputing Milestone {confirmAction.milestoneIdx + 1} will freeze this milestone.
-                  An admin must resolve the dispute to release or refund funds.
-                </p>
-                <div className="modal-actions">
-                  <button type="button" onClick={() => setConfirmAction(null)} className="btn-secondary">Cancel</button>
-                  <button type="button" onClick={() => handleDispute(confirmAction.milestoneIdx)} className="btn-dispute">Confirm Dispute</button>
+              <div className="space-y-6 text-center">
+                <div className="mx-auto w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                    <AlertCircle className="text-red-400" size={24} />
                 </div>
-              </>
+                <h3 className="text-xl font-bold text-zinc-100">Initiate Arbitration</h3>
+                <p className="text-sm text-zinc-400">Disputing will freeze the funds. The protocol oracle will step in to arbitrate. Await network resolution.</p>
+                <div className="flex gap-3 pt-2">
+                  <Button variant="secondary" className="flex-1" onClick={() => setConfirmAction(null)}>Cancel</Button>
+                  <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)] border-transparent" onClick={() => handleDispute(confirmAction.milestoneIdx)}>Confirm Dispute</Button>
+                </div>
+              </div>
             )}
 
             {confirmAction.type === 'resolve' && (() => {
@@ -1030,33 +813,38 @@ export function DealDashboard({
               const clientRefund = Math.floor(amount * resolveRefundPct / 100);
               const providerPayout = amount - clientRefund;
               return (
-                <>
-                  <h3>Resolve Dispute</h3>
-                  <p className="modal-subtitle">
-                    Set refund percentage for Milestone {confirmAction.milestoneIdx + 1}:
-                  </p>
-                  <div className="resolve-slider">
+                <div className="space-y-6">
+                  <div className="text-center space-y-2 mb-6">
+                     <h3 className="text-xl font-bold text-zinc-100">Resolve Arbitration</h3>
+                     <p className="text-sm text-zinc-400">Configure split weight for conflict resolution (Client refund vs Provider payout).</p>
+                  </div>
+                  
+                  <div className="bg-black/50 border border-zinc-800 rounded-xl p-5 space-y-6">
                     <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={resolveRefundPct}
+                      type="range" min={0} max={100} value={resolveRefundPct}
                       onChange={(e) => setResolveRefundPct(Number(e.target.value))}
-                      aria-label="Refund percentage"
+                      className="w-full appearance-none bg-zinc-800 h-2 rounded-full outline-none accent-emerald-500"
                     />
-                    <div className="resolve-preview">
-                      <span>Client refund: {formatAmount(clientRefund.toString())} {tokenSymbol} ({resolveRefundPct}%)</span>
-                      <span>Provider payout: {formatAmount(providerPayout.toString())} {tokenSymbol} ({100 - resolveRefundPct}%)</span>
+                    <div className="flex justify-between text-sm font-mono">
+                      <div className="space-y-1">
+                        <div className="text-zinc-500">Client Refund</div>
+                        <div className="text-zinc-200">{formatAmount(clientRefund.toString())} <span className="text-xs opacity-50">({resolveRefundPct}%)</span></div>
+                      </div>
+                      <div className="space-y-1 text-right">
+                        <div className="text-zinc-500">Provider Payout</div>
+                        <div className="text-zinc-200">{formatAmount(providerPayout.toString())} <span className="text-xs opacity-50">({100 - resolveRefundPct}%)</span></div>
+                      </div>
                     </div>
                   </div>
-                  <div className="modal-actions">
-                    <button type="button" onClick={() => setConfirmAction(null)} className="btn-secondary">Cancel</button>
-                    <button type="button" onClick={() => handleResolve(confirmAction.milestoneIdx, resolveRefundPct)} className="btn-primary">Resolve Dispute</button>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="secondary" className="flex-1" onClick={() => setConfirmAction(null)}>Cancel</Button>
+                    <Button variant="primary" className="flex-1" onClick={() => handleResolve(confirmAction.milestoneIdx, resolveRefundPct)}>Resolve State</Button>
                   </div>
-                </>
+                </div>
               );
             })()}
-          </div>
+          </Card>
         </div>
       )}
     </div>

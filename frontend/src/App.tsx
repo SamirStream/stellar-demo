@@ -1,4 +1,11 @@
-import { useState, useCallback, useContext, createContext, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, useContext, createContext, useRef, useEffect } from 'react';
+import { 
+  Award, FileText, 
+  Zap, ArrowRightLeft,
+  Coins, Plus,
+  Network, Cpu, Lock,
+  TerminalSquare
+} from 'lucide-react';
 import { useStellarWallet } from './hooks/useStellarWallet';
 import { useDealEscrow } from './hooks/useDealEscrow';
 import { ConnectWallet } from './components/ConnectWallet';
@@ -7,7 +14,8 @@ import { DealDashboard } from './components/DealDashboard';
 import { SoroswapWidget } from './components/SoroswapWidget';
 import { ReputationBadge } from './components/ReputationBadge';
 import { DEAL_ESCROW_CONTRACT, getExplorerContractLink } from './lib/stellar';
-import './App.css';
+import { SignalLogo, GlowingBackground } from './components/ui/Branding';
+import { Button, Card } from './components/ui/Components';
 
 /* ============================================
    Toast Notification System
@@ -19,16 +27,23 @@ const ToastContext = createContext<(message: string, type?: ToastType) => void>(
 export const useToast = () => useContext(ToastContext);
 
 function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
+  // Keeping the simplified inline toast for now, can map to Tailwind later if needed.
   return (
-    <div className="toast-container" role="status" aria-live="polite">
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" role="status" aria-live="polite">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast toast-${t.type}${t.exiting ? ' toast-exit' : ''}`} onClick={() => onDismiss(t.id)}>
-          <span className="toast-icon">
+        <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-md transition-all duration-300 ${
+          t.exiting ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
+        } ${
+          t.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
+          t.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+          'bg-zinc-800/80 border-zinc-700 text-zinc-300'
+        }`} onClick={() => onDismiss(t.id)}>
+          <span className="font-bold">
             {t.type === 'success' && '✓'}
             {t.type === 'error' && '✕'}
             {t.type === 'info' && 'ℹ'}
           </span>
-          <span className="toast-message">{t.message}</span>
+          <span className="text-sm font-medium">{t.message}</span>
         </div>
       ))}
     </div>
@@ -37,57 +52,76 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
 
 type Tab = 'create' | 'dashboard' | 'fund' | 'reputation';
 
-// Inline SVG icons for tabs
-const TabIcons: Record<Tab, ReactNode> = {
-  fund: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2v20M17 7l-5-5-5 5" />
-      <path d="M2 17h20" />
-    </svg>
-  ),
-  create: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="12" y1="18" x2="12" y2="12" />
-      <line x1="9" y1="15" x2="15" y2="15" />
-    </svg>
-  ),
-  dashboard: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="9" rx="1" />
-      <rect x="14" y="3" width="7" height="5" rx="1" />
-      <rect x="14" y="12" width="7" height="9" rx="1" />
-      <rect x="3" y="16" width="7" height="5" rx="1" />
-    </svg>
-  ),
-  reputation: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-    </svg>
-  ),
-};
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'fund', label: 'Fund Wallet' },
-  { id: 'create', label: 'Create Deal' },
-  { id: 'dashboard', label: 'My Deals' },
-  { id: 'reputation', label: 'Reputation' },
+const tabs: { id: Tab; label: string; icon: any }[] = [
+  { id: 'fund', label: 'Liquidity', icon: Coins },
+  { id: 'create', label: 'Deploy Contract', icon: Plus },
+  { id: 'dashboard', label: 'Terminal', icon: TerminalSquare },
+  { id: 'reputation', label: 'Oracle', icon: Award },
 ];
 
-const STEP_LABELS: Record<Tab, string> = {
-  fund: 'Step 1',
-  create: 'Step 2',
-  dashboard: 'Step 3',
-  reputation: 'Step 4',
-};
+// --- 1. Landing Page View (Replaces connect-prompt) ---
+// Note: Kept the onConnect prop slightly different as it handles the logic
+const LandingView = ({ onConnect }: { onConnect: () => void }) => (
+  <div className="flex flex-col items-center justify-center min-h-[85vh] text-center px-4 animate-fade-in relative z-10 pt-10">
+    <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-900/50 border border-emerald-500/20 text-emerald-400 mb-10 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.1)] hover:border-emerald-500/50 transition-colors cursor-default">
+      <span className="relative flex h-3 w-3 mr-1">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+      </span>
+      <span className="text-sm font-bold tracking-widest uppercase">Soroban Testnet Live</span>
+    </div>
+    
+    <h1 className="text-6xl md:text-8xl font-black text-white mb-8 tracking-tighter leading-[1.1]">
+      Programmable <br /> 
+      <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-200 drop-shadow-[0_0_30px_rgba(52,211,153,0.4)]">
+        Trust Layer
+      </span>
+    </h1>
+    
+    <p className="text-xl text-zinc-400 max-w-3xl mb-14 leading-relaxed font-light">
+      Execute complex multi-party agreements with atomic fee routing, milestone locks, and cryptographically verified reputation. <span className="text-white font-medium">Code is the new law.</span>
+    </p>
 
-function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('fund');
+    <div className="flex flex-col sm:flex-row gap-6 mb-32">
+      <Button onClick={onConnect} variant="primary" className="text-lg px-10 py-5 w-full sm:w-auto" icon={TerminalSquare}>
+        Initialize Terminal
+      </Button>
+      <a href="https://thesignal.directory" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+        <Button variant="secondary" className="text-lg px-10 py-5 w-full h-full" icon={FileText}>
+          Read Documentation
+        </Button>
+      </a>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full max-w-7xl relative">
+      <div className="hidden md:block absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent -translate-y-1/2 z-0"></div>
+      
+      {[
+        { icon: Lock, title: "Milestone Vaults", desc: "Funds cryptographically locked until off-chain validation.", color: "text-emerald-400" },
+        { icon: Network, title: "Atomic Routing", desc: "Provider & BD paid in a single, indivisible ledger transaction.", color: "text-emerald-300" },
+        { icon: Cpu, title: "On-Chain Memory", desc: "Immutable reputation generated by Soroban smart contracts.", color: "text-green-400" },
+        { icon: ArrowRightLeft, title: "Native Swaps", desc: "Integrated liquidity pools via Soroswap protocol.", color: "text-emerald-500" }
+      ].map((feature, idx) => (
+        <Card key={idx} className="p-8 text-left z-10 bg-[#09090b] shadow-xl" hoverEffect glowOnHover>
+          <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]">
+            <feature.icon size={28} className={feature.color} />
+          </div>
+          <h3 className="text-xl font-bold text-white mb-3 tracking-tight">{feature.title}</h3>
+          <p className="text-zinc-400 text-sm leading-relaxed font-medium">{feature.desc}</p>
+        </Card>
+      ))}
+    </div>
+  </div>
+);
+
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [lastCreatedDealId, setLastCreatedDealId] = useState<number | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(
     () => localStorage.getItem('parity-banner-dismissed') === '1'
   );
+  
   const wallet = useStellarWallet();
   const escrow = useDealEscrow(wallet.address, wallet.signTransaction);
 
@@ -97,7 +131,6 @@ function App() {
   const toast = useCallback((message: string, type: ToastType = 'info') => {
     const id = ++toastIdRef.current;
     setToasts((prev) => [...prev.slice(-2), { id, message, type }]); // Max 3 toasts
-    // Start exit animation after 2.7s, remove after 3s
     setTimeout(() => setToasts((prev) => prev.map((t) => t.id === id ? { ...t, exiting: true } : t)), 2700);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
   }, []);
@@ -106,13 +139,11 @@ function App() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 300);
   }, []);
 
-  // After deal creation: auto-navigate to dashboard with the new deal ID
   const handleDealCreated = useCallback((dealId: number) => {
     setLastCreatedDealId(dealId);
     setActiveTab('dashboard');
   }, []);
 
-  // After funding: navigate to create deal
   const handleFundComplete = useCallback(() => {
     setActiveTab('create');
   }, []);
@@ -122,15 +153,7 @@ function App() {
     localStorage.setItem('parity-banner-dismissed', '1');
   }, []);
 
-  // C1: Scroll-reactive header
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // C4: Keyboard tab navigation (Alt+1/2/3/4)
+  // Keyboard tab navigation (Alt+1/2/3/4)
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (!e.altKey) return;
@@ -145,127 +168,97 @@ function App() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [wallet.isConnected]);
 
+  // Truncate wallet logic
+  const truncWallet = wallet.address ? `${wallet.address.slice(0, 4)}...${wallet.address.slice(-4)}` : '';
+
   return (
     <ToastContext.Provider value={toast}>
-    <div className="app">
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      {/* Header */}
-      <header className={`app-header${scrolled ? ' header-scrolled' : ''}`}>
-        <div className="header-left">
-          <a href="https://thesignal.directory" target="_blank" rel="noopener noreferrer" className="logo">
-            <img src="/logo.png" alt="The Signal" className="logo-img" />
-            <div className="logo-text">
-              <span className="logo-title">The Signal</span>
-              <span className="logo-subtitle">Stellar Escrow Demo</span>
-            </div>
-          </a>
-        </div>
-        <div className="header-right">
-          <span className="testnet-badge">TESTNET</span>
-          <ConnectWallet wallet={wallet} />
-        </div>
-      </header>
+      <div className="min-h-screen bg-[#02040a] text-zinc-200 selection:bg-emerald-500/30 overflow-x-hidden relative flex flex-col">
+        <GlowingBackground />
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-      {/* Main Content */}
-      <main className={`app-main${activeTab === 'dashboard' && wallet.isConnected ? ' app-main-wide' : ''}`}>
-        {!wallet.isConnected ? (
-          <div className="connect-prompt">
-            <div className="connect-prompt-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
-                <path d="M9 12l2 2 4-4" />
-              </svg>
-            </div>
-            <h2>Connect Your Wallet</h2>
-            <p>
-              Connect a Stellar wallet (Freighter, xBull, or Albedo) to interact
-              with the DealEscrow smart contract on Testnet.
-            </p>
-            <button onClick={wallet.connect} className="btn-primary btn-large">
-              <span className="btn-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="6" width="20" height="12" rx="2" />
-                  <path d="M22 10H2" />
-                  <circle cx="16" cy="14" r="2" />
-                </svg>
-              </span>
-              Connect Wallet
-            </button>
-            <div className="connect-features">
-              <div className="feature animate-in">
-                <span className="feature-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
-                  </svg>
-                </span>
-                <span>Milestone-Based Escrow</span>
+        {/* Header */}
+        <header className="relative z-50 border-b border-zinc-800/80 bg-[#02040a]/80 backdrop-blur-2xl sticky top-0">
+          <div className="max-w-[90rem] mx-auto px-6 h-24 flex items-center justify-between">
+            {/* Logo */}
+            <a href="https://thesignal.directory" target="_blank" rel="noopener noreferrer" className="flex items-center gap-5 cursor-pointer group">
+              <div className="relative">
+                <div className="absolute inset-0 bg-emerald-500 blur-lg opacity-40 group-hover:opacity-80 transition-opacity"></div>
+                <SignalLogo className="w-12 h-12 relative z-10" />
               </div>
-              <div className="feature animate-in">
-                <span className="feature-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M16 8l-4 4-4-4" />
-                    <path d="M8 16l4-4 4 4" />
-                  </svg>
-                </span>
-                <span>Atomic 3-Way Splits</span>
+              <div className="flex flex-col">
+                <span className="text-3xl font-black tracking-tighter text-white group-hover:text-emerald-400 transition-colors">THE SIGNAL</span>
+                <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.3em]">Decentralized Escrow</span>
               </div>
-              <div className="feature animate-in">
-                <span className="feature-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                </span>
-                <span>On-Chain Reputation</span>
-              </div>
-              <div className="feature animate-in">
-                <span className="feature-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                    <polyline points="17 6 23 6 23 12" />
-                  </svg>
-                </span>
-                <span>Soroswap Integration</span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Tabs with step indicators */}
-            <nav className="tabs">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-                >
-                  <span className="tab-step">{STEP_LABELS[tab.id]}</span>
-                  <span className="tab-icon">{TabIcons[tab.id]}</span>
-                  <span className="tab-label">{tab.label}</span>
-                </button>
-              ))}
-            </nav>
+            </a>
 
-            {/* Production Parity Banner */}
-            {!bannerDismissed && (
-              <div className="parity-banner">
-                <div className="parity-banner-content">
-                  <strong>Production Parity Demo</strong>
-                  <p>This demo replicates The Signal's live escrow system on Soroban:</p>
-                  <ul>
-                    <li>Same 3-party split logic (Provider / Connector / Protocol)</li>
-                    <li>Same milestone lifecycle (Pending → Funded → Released)</li>
-                    <li>Same on-chain reputation tracking</li>
-                  </ul>
+            {/* Navigation / Wallet Connect */}
+            {wallet.isConnected ? (
+              <div className="flex items-center gap-8">
+                {/* Tabs */}
+                <nav className="hidden lg:flex gap-1 bg-[#09090b] p-1.5 rounded-2xl border border-zinc-800/80 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
+                  {tabs.map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`relative flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 overflow-hidden ${
+                        activeTab === tab.id 
+                          ? 'text-[#02040a]' 
+                          : 'text-zinc-500 hover:text-white hover:bg-zinc-800/50'
+                      }`}
+                    >
+                      {activeTab === tab.id && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-green-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] z-0"></div>
+                      )}
+                      <tab.icon size={16} className={`relative z-10`} />
+                      <span className="relative z-10">{tab.label}</span>
+                    </button>
+                  ))}
+                </nav>
+                
+                {/* Connected Wallet Info */}
+                <div className="flex items-center gap-4 bg-[#09090b] border border-zinc-800/80 rounded-2xl pl-5 pr-1.5 py-1.5 shadow-xl">
+                  <div className="flex flex-col items-end">
+                    <span className="text-xs font-mono text-emerald-400 font-bold">{wallet.xlmBalance} XLM</span>
+                    <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">Testnet</span>
+                  </div>
+                  {/* Keep wallet.disconnect bound to this click or add a dropdown eventually, for now just click to disconnect */}
+                  <div onClick={wallet.disconnect} title="Click to disconnect" className="bg-[#02040a] text-emerald-100 text-xs font-mono font-bold px-4 py-3 rounded-xl border border-zinc-800 hover:border-red-500/50 hover:text-red-400 cursor-pointer transition-all shadow-[inset_0_0_10px_rgba(16,185,129,0.05)] flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>
+                    {truncWallet}
+                  </div>
                 </div>
-                <button type="button" onClick={dismissBanner} className="parity-banner-dismiss" aria-label="Dismiss">
-                  &times;
-                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                 <ConnectWallet wallet={wallet} />
               </div>
             )}
+          </div>
+        </header>
 
-            {/* Tab Content */}
-            <div className="tab-content" key={activeTab}>
+        {/* Main Content */}
+        <main className="relative z-10 max-w-[90rem] mx-auto px-6 py-12 flex-1 w-full">
+          {!wallet.isConnected ? (
+            <LandingView onConnect={wallet.connect} />
+          ) : (
+            <div className="min-h-[70vh]">
+              {/* Production Parity Banner - Styled for new design */}
+              {!bannerDismissed && (
+                <div className="mb-10 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-transparent border border-emerald-500/20 flex justify-between items-start relative overflow-hidden group">
+                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500"></div>
+                  <div>
+                    <h4 className="text-emerald-400 font-bold uppercase tracking-widest text-xs mb-2 flex items-center gap-2">
+                      <Zap size={14}/> Production Parity Demo
+                    </h4>
+                    <p className="text-sm text-zinc-400">
+                      Replicates live logic on Soroban: 3-party protocol split, milestone locks, and immutable reputation.
+                    </p>
+                  </div>
+                  <button onClick={dismissBanner} className="text-zinc-500 hover:text-white p-2">✕</button>
+                </div>
+              )}
+
               {activeTab === 'fund' && (
                 <SoroswapWidget
                   walletAddress={wallet.address}
@@ -309,86 +302,62 @@ function App() {
                 />
               )}
             </div>
-          </>
-        )}
-      </main>
+          )}
+        </main>
 
-      {/* Footer */}
-      <footer className="app-footer">
-        <div className="footer-top">
-          <div className="footer-brand">
-            <img src="/logo.png" alt="The Signal" className="footer-logo" />
-            <div>
-              <span className="footer-brand-name">The Signal</span>
-              <span className="footer-brand-tagline">Trustless Escrow for the Open Economy</span>
+        {/* Footer */}
+        <footer className="relative z-10 border-t border-zinc-800/80 py-10 bg-[#02040a]/90 backdrop-blur-xl mt-auto">
+          <div className="max-w-[90rem] mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 opacity-80 hover:opacity-100 transition-opacity">
+            {/* Left */}
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <SignalLogo className="w-8 h-8 grayscale opacity-70" />
+                <div>
+                  <span className="block font-bold text-sm text-white">The Signal</span>
+                  <span className="block text-xs text-zinc-500">Trustless Escrow</span>
+                </div>
+              </div>
+              <p className="text-xs text-zinc-500 max-w-xs">
+                &copy; {new Date().getFullYear()} The Signal. All rights reserved.
+              </p>
+            </div>
+
+            {/* Middle Links */}
+            <div className="flex gap-16 justify-center text-sm">
+              <div className="flex flex-col gap-3">
+                <span className="font-bold text-zinc-400 uppercase tracking-widest text-[10px]">Protocol</span>
+                {DEAL_ESCROW_CONTRACT && (
+                  <a href={getExplorerContractLink(DEAL_ESCROW_CONTRACT)} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-emerald-400 transition-colors">
+                    Smart Contract
+                  </a>
+                )}
+                <a href="https://stellar.expert/explorer/testnet" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-emerald-400 transition-colors">
+                  Stellar Explorer
+                </a>
+              </div>
+              <div className="flex flex-col gap-3">
+                 <span className="font-bold text-zinc-400 uppercase tracking-widest text-[10px]">Ecosystem</span>
+                 <a href="https://thesignal.directory" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-emerald-400 transition-colors">Directory</a>
+                 <a href="https://soroban.stellar.org" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-emerald-400 transition-colors">Soroban Docs</a>
+              </div>
+            </div>
+
+            {/* Right Socials */}
+            <div className="flex flex-col items-end gap-6 justify-center md:items-end">
+              <div className="flex gap-4">
+                 <a href="https://x.com/thesignaldir" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-emerald-400 transition-colors p-2 bg-zinc-900 rounded-lg">X</a>
+                 <a href="https://www.linkedin.com/company/signaldirectory/" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-emerald-400 transition-colors p-2 bg-zinc-900 rounded-lg">IN</a>
+                 <a href="https://t.me/thesignaldirectory" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-emerald-400 transition-colors p-2 bg-zinc-900 rounded-lg">TG</a>
+                 <a href="https://discord.gg/DyMtfph9rA" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-emerald-400 transition-colors p-2 bg-zinc-900 rounded-lg">DC</a>
+              </div>
+              <div className="text-[10px] text-zinc-600 uppercase tracking-widest font-mono flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                Powered by Soroban Network
+              </div>
             </div>
           </div>
-          <div className="footer-socials">
-            <a href="https://thesignal.directory" target="_blank" rel="noopener noreferrer" title="Website" aria-label="Website">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="2" y1="12" x2="22" y2="12" />
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-              </svg>
-            </a>
-            <a href="https://x.com/thesignaldir" target="_blank" rel="noopener noreferrer" title="X (Twitter)" aria-label="X (Twitter)">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-            </a>
-            <a href="https://www.linkedin.com/company/signaldirectory/" target="_blank" rel="noopener noreferrer" title="LinkedIn" aria-label="LinkedIn">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-              </svg>
-            </a>
-            <a href="https://discord.gg/DyMtfph9rA" target="_blank" rel="noopener noreferrer" title="Discord" aria-label="Discord">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-              </svg>
-            </a>
-            <a href="https://t.me/thesignaldirectory" target="_blank" rel="noopener noreferrer" title="Telegram" aria-label="Telegram">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-              </svg>
-            </a>
-            <a href="mailto:support@thesignal.directory" title="Email" aria-label="Email">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <path d="M22 7l-10 7L2 7" />
-              </svg>
-            </a>
-          </div>
-        </div>
-        <div className="footer-middle">
-          <div className="footer-links-group">
-            <span className="footer-links-title">Protocol</span>
-            {DEAL_ESCROW_CONTRACT && (
-              <a href={getExplorerContractLink(DEAL_ESCROW_CONTRACT)} target="_blank" rel="noopener noreferrer">
-                Smart Contract
-              </a>
-            )}
-            <a href="https://stellar.expert/explorer/testnet" target="_blank" rel="noopener noreferrer">
-              Stellar Explorer
-            </a>
-            <a href="https://soroban.stellar.org" target="_blank" rel="noopener noreferrer">
-              Soroban Docs
-            </a>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <span className="footer-copyright">&copy; {new Date().getFullYear()} The Signal. All rights reserved.</span>
-          <span className="footer-powered">
-            Powered by
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-            Stellar &amp; Soroban
-          </span>
-        </div>
-      </footer>
-    </div>
+        </footer>
+      </div>
     </ToastContext.Provider>
   );
 }
-
-export default App;

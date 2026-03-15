@@ -1,0 +1,36 @@
+src/App.tsx(1,84): error TS6133: 'ReactNode' is declared but its value is never read.
+src/App.tsx(3,3): error TS6133: 'Wallet' is declared but its value is never read.
+src/App.tsx(3,11): error TS6133: 'ShieldCheck' is declared but its value is never read.
+src/App.tsx(4,3): error TS6133: 'CheckCircle' is declared but its value is never read.
+src/App.tsx(4,16): error TS6133: 'AlertCircle' is declared but its value is never read.
+src/App.tsx(4,29): error TS6133: 'Search' is declared but its value is never read.
+src/App.tsx(4,42): error TS6133: 'Activity' is declared but its value is never read.
+src/App.tsx(5,3): error TS6133: 'ArrowDownToLine' is declared but its value is never read.
+src/App.tsx(5,33): error TS6133: 'Clock' is declared but its value is never read.
+src/App.tsx(5,40): error TS6133: 'ExternalLink' is declared but its value is never read.
+src/App.tsx(6,3): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/App.tsx(6,16): error TS6133: 'ArrowLeft' is declared but its value is never read.
+src/App.tsx(6,47): error TS6133: 'Unlock' is declared but its value is never read.
+src/App.tsx(18,24): error TS6133: 'Tag' is declared but its value is never read.
+src/components/CreateDeal.tsx(289,24): error TS2322: Type '{ children: string; variant: string; }' is not assignable to type 'IntrinsicAttributes & { children: ReactNode; color?: "emerald" | "zinc" | "amber" | "red" | undefined; }'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & { children: ReactNode; color?: "emerald" | "zinc" | "amber" | "red" | undefined; }'.
+src/components/CreateDeal.tsx(297,24): error TS2322: Type '{ children: string; variant: string; }' is not assignable to type 'IntrinsicAttributes & { children: ReactNode; color?: "emerald" | "zinc" | "amber" | "red" | undefined; }'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & { children: ReactNode; color?: "emerald" | "zinc" | "amber" | "red" | undefined; }'.
+src/components/CreateDeal.tsx(365,108): error TS2367: This comparison appears to be unintentional because the types '"submitting" | "confirming"' and '"signing"' have no overlap.
+src/components/DealDashboard.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/DealDashboard.tsx(102,10): error TS6133: 'listError' is declared but its value is never read.
+src/components/DealDashboard.tsx(369,74): error TS2304: Cannot find name 'Plus'.
+src/components/DealDashboard.tsx(448,28): error TS2322: Type '"emerald" | "zinc" | "amber" | "red" | "blue"' is not assignable to type '"emerald" | "zinc" | "amber" | "red" | undefined'.
+  Type '"blue"' is not assignable to type '"emerald" | "zinc" | "amber" | "red" | undefined'.
+src/components/DealDashboard.tsx(529,28): error TS2322: Type '"emerald" | "zinc" | "amber" | "red" | "blue"' is not assignable to type '"emerald" | "zinc" | "amber" | "red" | undefined'.
+  Type '"blue"' is not assignable to type '"emerald" | "zinc" | "amber" | "red" | undefined'.
+src/components/DealDashboard.tsx(657,77): error TS2322: Type '"emerald" | "zinc" | "amber" | "red" | "blue"' is not assignable to type '"emerald" | "zinc" | "amber" | "red" | undefined'.
+  Type '"blue"' is not assignable to type '"emerald" | "zinc" | "amber" | "red" | undefined'.
+src/components/DealDashboard.tsx(657,121): error TS2304: Cannot find name 'MILESTONE_LABELS'.
+src/components/DealDashboard.tsx(749,106): error TS2322: Type '{ children: (false | Element)[]; className: string; onClick: (e: any) => any; }' is not assignable to type 'IntrinsicAttributes & { children: ReactNode; className?: string | undefined; hoverEffect?: boolean | undefined; glowOnHover?: boolean | undefined; }'.
+  Property 'onClick' does not exist on type 'IntrinsicAttributes & { children: ReactNode; className?: string | undefined; hoverEffect?: boolean | undefined; glowOnHover?: boolean | undefined; }'.
+src/components/DealDashboard.tsx(749,116): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/SoroswapWidget.tsx(171,18): error TS2322: Type '{ children: string; variant: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; }' is not assignable to type 'IntrinsicAttributes & { children: ReactNode; color?: "emerald" | "zinc" | "amber" | "red" | undefined; }'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & { children: ReactNode; color?: "emerald" | "zinc" | "amber" | "red" | undefined; }'.
+src/components/ui/Branding.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/ui/Components.tsx(2,10): error TS1484: 'LucideIcon' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
