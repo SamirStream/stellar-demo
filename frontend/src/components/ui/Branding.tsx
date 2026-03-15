@@ -2,20 +2,11 @@
 
 // --- Custom Logo Component ---
 export const SignalLogo = ({ className = "w-10 h-10" }: { className?: string }) => (
-  // The user requested to reuse their existing logo or the one provided. This matches the provided SVG in the prompt.
-  <svg 
-    viewBox="0 0 100 100" 
-    className={`${className} drop-shadow-[0_0_15px_rgba(74,222,128,0.8)]`} 
-    fill="none" 
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path d="M 15 85 L 15 65 L 30 50 L 30 85 Z" fill="#4ade80" />
-    <path d="M 37 85 L 37 65 L 52 50 L 52 85 Z" fill="#4ade80" />
-    <path d="M 37 55 L 37 45 L 52 30 L 52 55 Z" fill="#4ade80" />
-    <path d="M 59 85 L 59 65 L 74 50 L 74 85 Z" fill="#4ade80" />
-    <path d="M 59 55 L 59 25 L 74 10 L 74 55 Z" fill="#4ade80" />
-    <path d="M 81 85 L 81 15 L 96 0 L 96 85 Z" fill="#4ade80" />
-  </svg>
+  <img
+    src="/logo.png"
+    alt="The Signal Logo"
+    className={`${className} object-contain drop-shadow-[0_0_15px_rgba(74,222,128,0.8)]`}
+  />
 );
 
 // --- High-End UI Components ---
