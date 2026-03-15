@@ -5,8 +5,10 @@ import {
   KitEventType,
 } from '@creit.tech/stellar-wallets-kit';
 import { FreighterModule } from '@creit.tech/stellar-wallets-kit/modules/freighter';
-import { xBullModule } from '@creit.tech/stellar-wallets-kit/modules/xbull';
 import { AlbedoModule } from '@creit.tech/stellar-wallets-kit/modules/albedo';
+// xBullModule removed: xBull always reports isAvailable=true but its web popup
+// (wallet.xbull.app/connect) is blocked by Firefox popup blocker when opened
+// from an async context, causing silent "nothing happens" with no error feedback.
 import { getXlmBalance, getTokenBalance, formatAmount, USDC_TOKEN_ADDRESS } from '../lib/stellar';
 
 // FreighterModule detection uses window.postMessage with a 2s timeout.
@@ -59,9 +61,10 @@ export function useStellarWallet(): WalletState {
     StellarWalletsKit.init({
       network: Networks.TESTNET,
       modules: [
-        freighterModule,
-        new xBullModule(),
+        // Albedo first: web-based, no extension, no popup blocker issues
         new AlbedoModule(),
+        // Freighter second: extension wallet, shown for users who have it installed
+        freighterModule,
       ],
     });
 

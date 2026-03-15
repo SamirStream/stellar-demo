@@ -278,7 +278,7 @@ export default function App() {
           'error'
         );
       } else if (!msg.includes('cancel') && !msg.includes('reject') && !msg.includes('denied')) {
-        toast('Failed to connect wallet. Try Albedo (web-based, no extension needed).', 'error');
+        toast('Connection failed. Select Albedo — it works in all browsers without an extension.', 'error');
       }
     }
   }, [wallet.connect, toast]);
