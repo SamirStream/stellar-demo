@@ -259,7 +259,7 @@ export function DealDashboard({
 
   // === Filters ===
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [myDealsOnly, setMyDealsOnly] = useState(false);
+  const [myDealsOnly, setMyDealsOnly] = useState(true);
 
   // === Selected deal ===
   const [selectedDealId, setSelectedDealId] = useState<number | null>(initialDealId ?? null);
