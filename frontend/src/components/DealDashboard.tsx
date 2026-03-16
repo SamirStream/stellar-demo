@@ -418,8 +418,8 @@ export function DealDashboard({
               </div>
             )}
             
-            <div className="relative">
-            <div className="flex items-center gap-0.5 bg-black/60 p-0.5 rounded-xl border border-zinc-800/60 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="relative pb-1"> {/* pb-1 to make room for horizontal scrollbar */}
+            <div className="flex flex-nowrap items-center gap-1 bg-black/60 p-1 rounded-xl border border-zinc-800/60 overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-700/80 hover:[&::-webkit-scrollbar-thumb]:bg-zinc-600 [&::-webkit-scrollbar-thumb]:rounded-full shadow-inner">
               {(['all', 'Active', 'Created', 'Completed', 'Disputed', 'Cancelled'] as const).map((tab) => {
                 const count = statusCounts[tab as keyof typeof statusCounts];
                 const isActive = statusFilter === tab;
@@ -443,10 +443,10 @@ export function DealDashboard({
                     key={tab}
                     type="button"
                     onClick={() => setStatusFilter(tab as StatusFilter)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-200 ${
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all duration-200 ${
                       isActive
                         ? activeStyle[tab]
-                        : 'text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/40'
+                        : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 border border-transparent'
                     }`}
                   >
                     {isActive && tab !== 'all' && (
@@ -454,8 +454,8 @@ export function DealDashboard({
                     )}
                     {tab === 'all' ? 'All' : STATUS_LABELS[tab]}
                     {count > 0 && (
-                      <span className={`px-1 py-px rounded font-mono text-[9px] ${
-                        isActive ? 'bg-white/10 text-inherit' : 'bg-zinc-800/60 text-zinc-600'
+                      <span className={`px-1.5 py-0.5 rounded font-mono text-[10px] ${
+                        isActive ? 'bg-white/10 text-inherit' : 'bg-zinc-800/60 text-zinc-500'
                       }`}>
                         {count}
                       </span>
@@ -464,11 +464,11 @@ export function DealDashboard({
                 );
               })}
             </div>
-            <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#09090b] to-transparent pointer-events-none rounded-r-xl" />
+            {/* Removed the right-side pointer-events-none gradient so it doesn't block the scrollbar track */}
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-zinc-900/50 [&::-webkit-scrollbar-thumb]:bg-zinc-700/80 hover:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-zinc-900 [&::-webkit-scrollbar-thumb]:rounded-full pr-2">
             {listLoading ? (
               [...Array(5)].map((_, i) => (
                 <div key={i} className="animate-pulse p-4 rounded-xl border border-zinc-800/50 bg-zinc-900/20">
