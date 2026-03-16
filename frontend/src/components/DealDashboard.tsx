@@ -382,10 +382,10 @@ export function DealDashboard({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
 
         {/* Left Panel: Deal List */}
-        <Card className={`lg:col-span-4 h-[calc(100svh-260px)] lg:h-[calc(100vh-200px)] min-h-[400px] ${mobileShowDetail ? 'hidden lg:flex' : 'flex'}`}>
-          <div className="flex flex-col h-full overflow-hidden">
-          <div className="p-3 border-b border-zinc-800/50 bg-zinc-900/30 flex flex-col gap-3 shrink-0">
-            <div className="relative group">
+        <Card className={`lg:col-span-4 h-[calc(100svh-260px)] lg:h-[calc(100vh-200px)] min-h-[400px] flex flex-col min-w-0 ${mobileShowDetail ? 'hidden lg:flex' : 'flex'}`}>
+          <div className="flex flex-col h-full w-full min-w-0 overflow-hidden">
+          <div className="p-3 border-b border-zinc-800/50 bg-zinc-900/30 flex flex-col gap-3 shrink-0 min-w-0 w-full">
+            <div className="relative group min-w-0">
               <Search
                 size={15}
                 className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${searchQuery ? 'text-emerald-400' : 'text-zinc-600 group-focus-within:text-emerald-500'}`}
@@ -395,7 +395,7 @@ export function DealDashboard({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ID, title, address…"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-8 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500/50 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.08)] transition-all placeholder:text-zinc-700 font-mono"
+                className="w-full min-w-0 bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-8 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500/50 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.08)] transition-all placeholder:text-zinc-700 font-mono"
               />
               {searchQuery && (
                 <button
@@ -409,7 +409,7 @@ export function DealDashboard({
               )}
             </div>
             {searchQuery.trim() && (
-              <div className="flex items-center gap-1.5 px-1 text-[10px] font-mono">
+              <div className="flex items-center gap-1.5 px-1 text-[10px] font-mono min-w-0">
                 <span className={`font-bold ${filteredDeals.length === 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                   {filteredDeals.length}
                 </span>
@@ -418,8 +418,11 @@ export function DealDashboard({
               </div>
             )}
             
-            <div className="relative pb-1"> {/* pb-1 to make room for horizontal scrollbar */}
-            <div className="flex flex-nowrap items-center gap-1 bg-black/60 p-1 rounded-xl border border-zinc-800/60 overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-700/80 hover:[&::-webkit-scrollbar-thumb]:bg-zinc-600 [&::-webkit-scrollbar-thumb]:rounded-full shadow-inner">
+            <div className="relative pb-1 min-w-0 w-full">
+            <div 
+              className="flex flex-nowrap items-center gap-1 bg-black/60 p-1 rounded-xl border border-zinc-800/60 overflow-x-auto pb-2 shadow-inner"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: '#3f3f46 transparent' }}
+            >
               {(['all', 'Active', 'Created', 'Completed', 'Disputed', 'Cancelled'] as const).map((tab) => {
                 const count = statusCounts[tab as keyof typeof statusCounts];
                 const isActive = statusFilter === tab;
@@ -464,11 +467,15 @@ export function DealDashboard({
                 );
               })}
             </div>
-            {/* Removed the right-side pointer-events-none gradient so it doesn't block the scrollbar track */}
+            {/* Added a subtle gradient to indicate scrolling is possible */}
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#09090b]/90 to-transparent pointer-events-none rounded-r-xl" />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-zinc-900/50 [&::-webkit-scrollbar-thumb]:bg-zinc-700/80 hover:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-zinc-900 [&::-webkit-scrollbar-thumb]:rounded-full pr-2">
+          <div 
+            className="flex-1 overflow-y-auto min-h-0 min-w-0 p-3 space-y-3 pr-3 border-t border-transparent"
+            style={{ paddingRight: '12px' }}
+          >
             {listLoading ? (
               [...Array(5)].map((_, i) => (
                 <div key={i} className="animate-pulse p-4 rounded-xl border border-zinc-800/50 bg-zinc-900/20">
