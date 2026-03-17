@@ -32,7 +32,7 @@ export const useToast = () => useContext(ToastContext);
 function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
   // Keeping the simplified inline toast for now, can map to Tailwind later if needed.
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" role="status" aria-live="polite">
+    <div className="fixed bottom-16 lg:bottom-4 right-4 z-50 flex flex-col gap-2" role="status" aria-live="polite">
       {toasts.map((t) => (
         <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border backdrop-blur-md transition-all duration-300 ${
           t.exiting ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
@@ -145,56 +145,56 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
 // --- 1. Landing Page View (Replaces connect-prompt) ---
 // Note: Kept the onConnect prop slightly different as it handles the logic
 const LandingView = ({ onConnect }: { onConnect: () => void }) => (
-  <div className="flex flex-col items-center justify-center min-h-[85vh] text-center px-4 animate-fade-in relative z-10 pt-10">
-    <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-900/50 border border-emerald-500/20 text-emerald-400 mb-12 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.1)] hover:border-emerald-500/50 transition-colors cursor-default">
-      <span className="relative flex h-3 w-3 mr-1">
+  <div className="flex flex-col items-center justify-center min-h-[85vh] text-center px-2 sm:px-4 animate-fade-in relative z-10 pt-6 lg:pt-10">
+    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 border border-emerald-500/20 text-emerald-400 mb-8 lg:mb-12 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.1)] hover:border-emerald-500/50 transition-colors cursor-default">
+      <span className="relative flex h-2.5 w-2.5 lg:h-3 lg:w-3 mr-1">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 lg:h-3 lg:w-3 bg-emerald-500"></span>
       </span>
-      <span className="text-[10px] font-black tracking-[0.3em] uppercase">Stellar Soroban Testnet</span>
+      <span className="text-[9px] lg:text-[10px] font-black tracking-[0.2em] lg:tracking-[0.3em] uppercase">Stellar Soroban Testnet</span>
     </div>
 
-    <div className="glitch-wrapper relative mb-10">
+    <div className="glitch-wrapper relative mb-6 lg:mb-10">
       <h1
-        className="glitch-text text-[4.5rem] sm:text-[6rem] md:text-[8rem] lg:text-[10rem] font-black text-white tracking-tighter leading-[0.9]"
+        className="glitch-text text-[3rem] sm:text-[4.5rem] md:text-[6rem] lg:text-[10rem] font-black text-white tracking-tighter leading-[0.9]"
         data-text="Trust Engine."
       >
         Trust Engine.
       </h1>
     </div>
 
-    <p className="text-xl text-zinc-400 max-w-2xl mb-14 leading-relaxed font-light">
+    <p className="text-base lg:text-xl text-zinc-400 max-w-2xl mb-8 lg:mb-14 leading-relaxed font-light px-2">
       Execute autonomous multi-party escrows with atomic fee routing and cryptographic milestone locks.{' '}
       <span className="text-white font-medium border-b border-zinc-600 pb-0.5">Code is Law.</span>
     </p>
 
-    <div className="flex flex-col sm:flex-row gap-6 mb-32 relative">
+    <div className="flex flex-col sm:flex-row gap-4 lg:gap-6 mb-16 lg:mb-32 relative w-full sm:w-auto px-2 sm:px-0">
       <div className="absolute -inset-6 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none"></div>
-      <Button onClick={onConnect} variant="primary" className="px-10 py-5 w-full sm:w-auto relative z-10" icon={TerminalSquare}>
+      <Button onClick={onConnect} variant="primary" className="px-8 lg:px-10 py-4 lg:py-5 w-full sm:w-auto relative z-10" icon={TerminalSquare}>
         Connect Wallet
       </Button>
       <a href="https://github.com/SamirStream/stellar-demo" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto relative z-10">
-        <Button variant="secondary" className="px-10 py-5 w-full h-full" icon={Globe2}>
+        <Button variant="secondary" className="px-8 lg:px-10 py-4 lg:py-5 w-full h-full" icon={Globe2}>
           Read the Docs
         </Button>
       </a>
     </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full max-w-7xl relative">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-6 w-full max-w-7xl relative">
       <div className="hidden md:block absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent -translate-y-1/2 z-0"></div>
-      
+
       {[
         { icon: Lock, title: "Milestone Vaults", desc: "Funds cryptographically locked until off-chain validation.", color: "text-emerald-400" },
         { icon: Network, title: "Atomic Routing", desc: "Provider & BD paid in a single, indivisible ledger transaction.", color: "text-emerald-300" },
         { icon: Cpu, title: "On-Chain Memory", desc: "Immutable reputation generated by Soroban smart contracts.", color: "text-green-400" },
         { icon: ArrowRightLeft, title: "Native Swaps", desc: "Integrated liquidity pools via Soroswap protocol.", color: "text-emerald-500" }
       ].map((feature, idx) => (
-        <Card key={idx} className="p-8 text-left z-10 bg-[#09090b] shadow-xl" hoverEffect glowOnHover>
-          <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]">
-            <feature.icon size={28} className={feature.color} />
+        <Card key={idx} className="p-4 lg:p-8 text-left z-10 bg-[#09090b] shadow-xl" hoverEffect glowOnHover>
+          <div className="w-10 h-10 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-3 lg:mb-6 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]">
+            <feature.icon size={20} className={`${feature.color} lg:!w-7 lg:!h-7`} />
           </div>
-          <h3 className="text-xl font-bold text-white mb-3 tracking-tight">{feature.title}</h3>
-          <p className="text-zinc-400 text-sm leading-relaxed font-medium">{feature.desc}</p>
+          <h3 className="text-sm lg:text-xl font-bold text-white mb-1.5 lg:mb-3 tracking-tight">{feature.title}</h3>
+          <p className="text-zinc-400 text-xs lg:text-sm leading-relaxed font-medium">{feature.desc}</p>
         </Card>
       ))}
     </div>
@@ -337,27 +337,27 @@ export default function App() {
 
         {/* Header */}
         <header className="relative z-50 border-b border-zinc-800/80 bg-[#02040a]/80 backdrop-blur-2xl sticky top-0">
-          <div className="max-w-[90rem] mx-auto px-6 h-24 flex items-center justify-between">
+          <div className="max-w-[90rem] mx-auto px-3 lg:px-6 h-14 lg:h-24 flex items-center justify-between">
             {/* Logo */}
             {wallet.isConnected ? (
               <button
                 type="button"
                 onClick={wallet.disconnect}
                 title="Go to homepage"
-                className="flex items-center gap-5 cursor-pointer group"
+                className="flex items-center gap-2.5 lg:gap-5 cursor-pointer group"
               >
-                <SignalLogo className="w-12 h-12" />
+                <SignalLogo className="w-8 h-8 lg:w-12 lg:h-12" />
                 <div className="flex flex-col">
-                  <span className="font-display text-3xl text-white group-hover:text-emerald-400 transition-colors leading-none">THE SIGNAL</span>
-                  <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.3em] mt-1">Decentralized Escrow</span>
+                  <span className="font-display text-lg lg:text-3xl text-white group-hover:text-emerald-400 transition-colors leading-none">THE SIGNAL</span>
+                  <span className="hidden lg:block text-[9px] font-mono text-zinc-500 uppercase tracking-[0.3em] mt-1">Decentralized Escrow</span>
                 </div>
               </button>
             ) : (
-              <a href="https://thesignal.directory" target="_blank" rel="noopener noreferrer" className="flex items-center gap-5 cursor-pointer group">
-                <SignalLogo className="w-12 h-12" />
+              <a href="https://thesignal.directory" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 lg:gap-5 cursor-pointer group">
+                <SignalLogo className="w-8 h-8 lg:w-12 lg:h-12" />
                 <div className="flex flex-col">
-                  <span className="font-display text-3xl text-white group-hover:text-emerald-400 transition-colors leading-none">THE SIGNAL</span>
-                  <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.3em] mt-1">Decentralized Escrow</span>
+                  <span className="font-display text-lg lg:text-3xl text-white group-hover:text-emerald-400 transition-colors leading-none">THE SIGNAL</span>
+                  <span className="hidden lg:block text-[9px] font-mono text-zinc-500 uppercase tracking-[0.3em] mt-1">Decentralized Escrow</span>
                 </div>
               </a>
             )}
@@ -385,15 +385,15 @@ export default function App() {
                 </nav>
                 
                 {/* Connected Wallet Info */}
-                <div className="flex items-center gap-4 bg-[#09090b] border border-zinc-800/80 rounded-2xl pl-5 pr-1.5 py-1.5 shadow-xl">
-                  <div className="flex flex-col items-end">
+                <div className="flex items-center gap-2 lg:gap-4 bg-[#09090b] border border-zinc-800/80 rounded-xl lg:rounded-2xl pl-3 lg:pl-5 pr-1 lg:pr-1.5 py-1 lg:py-1.5 shadow-xl">
+                  <div className="hidden sm:flex flex-col items-end">
                     <span className="text-xs font-mono text-emerald-400 font-bold">{wallet.xlmBalance} XLM</span>
                     <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-bold">
                       {wallet.activeSource === 'privy' ? 'Privy · Testnet' : 'Testnet'}
                     </span>
                   </div>
                   {/* Address chip — click address to copy, click × to disconnect */}
-                  <div className="bg-[#02040a] text-emerald-100 text-xs font-mono font-bold px-3 py-3 rounded-xl border border-zinc-800 shadow-[inset_0_0_10px_rgba(16,185,129,0.05)] flex items-center gap-2">
+                  <div className="bg-[#02040a] text-emerald-100 text-xs font-mono font-bold px-2 lg:px-3 py-2 lg:py-3 rounded-lg lg:rounded-xl border border-zinc-800 shadow-[inset_0_0_10px_rgba(16,185,129,0.05)] flex items-center gap-1.5 lg:gap-2">
                     <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] shrink-0"></div>
                     <button
                       type="button"
@@ -412,10 +412,10 @@ export default function App() {
                       type="button"
                       onClick={wallet.disconnect}
                       title="Disconnect wallet"
-                      className="flex items-center gap-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all px-2.5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider"
+                      className="flex items-center gap-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all px-1.5 lg:px-2.5 py-1.5 lg:py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider"
                     >
                       <LogOut size={13} />
-                      <span className="hidden sm:inline">Disconnect</span>
+                      <span className="hidden lg:inline">Disconnect</span>
                     </button>
                   </div>
                 </div>
@@ -429,7 +429,7 @@ export default function App() {
         </header>
 
         {/* Main Content */}
-        <main className="relative z-10 max-w-[90rem] mx-auto px-6 py-12 flex-1 w-full">
+        <main className="relative z-10 max-w-[90rem] mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-12 flex-1 w-full pb-20 lg:pb-0">
           {wallet.isWalletLoading ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 animate-fade-in">
               {/* Pulsing logo ring */}
@@ -467,7 +467,7 @@ export default function App() {
 
               {/* Production Parity Banner - Styled for new design */}
               {!bannerDismissed && (
-                <div className="mb-10 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-transparent border border-emerald-500/20 flex justify-between items-start relative overflow-hidden group">
+                <div className="mb-4 lg:mb-10 p-3 lg:p-4 rounded-xl lg:rounded-2xl bg-gradient-to-r from-emerald-500/10 to-transparent border border-emerald-500/20 flex justify-between items-start relative overflow-hidden group">
                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500"></div>
                   <div>
                     <h4 className="text-emerald-400 font-bold uppercase tracking-widest text-xs mb-2 flex items-center gap-2">
@@ -527,8 +527,8 @@ export default function App() {
         </main>
 
         {/* Footer */}
-        <footer className="relative z-10 border-t border-zinc-800/80 py-10 bg-[#02040a]/90 backdrop-blur-xl mt-auto">
-          <div className="max-w-[90rem] mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 opacity-80 hover:opacity-100 transition-opacity">
+        <footer className="relative z-10 border-t border-zinc-800/80 py-6 lg:py-10 bg-[#02040a]/90 backdrop-blur-xl mt-auto mb-16 lg:mb-0">
+          <div className="max-w-[90rem] mx-auto px-3 lg:px-6 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-10 opacity-80 hover:opacity-100 transition-opacity">
             {/* Left */}
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
@@ -544,7 +544,7 @@ export default function App() {
             </div>
 
             {/* Middle Links */}
-            <div className="flex gap-16 justify-center text-sm">
+            <div className="flex gap-8 lg:gap-16 justify-center text-sm">
               <div className="flex flex-col gap-3">
                 <span className="font-bold text-zinc-400 uppercase tracking-widest text-[10px]">Protocol</span>
                 {DEAL_ESCROW_CONTRACT && (
@@ -586,6 +586,29 @@ export default function App() {
             </div>
           </div>
         </footer>
+
+        {/* Mobile Bottom Tab Bar — shown only when connected, hidden on lg+ */}
+        {wallet.isConnected && (
+          <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#050505]/95 backdrop-blur-xl border-t border-zinc-800/80 lg:hidden">
+            <div className="flex items-center justify-around h-14">
+              {tabs.map(tab => (
+                <button
+                  type="button"
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
+                    activeTab === tab.id
+                      ? 'text-emerald-400'
+                      : 'text-zinc-600 active:text-zinc-400'
+                  }`}
+                >
+                  <tab.icon size={18} />
+                  <span className="text-[9px] font-bold uppercase tracking-wider">{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
+        )}
       </div>
     </ToastContext.Provider>
   );

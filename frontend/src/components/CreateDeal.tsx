@@ -203,17 +203,17 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
 
   if (result) {
     return (
-      <div className="w-full max-w-2xl mx-auto animate-fade-in py-12">
+      <div className="w-full max-w-2xl mx-auto animate-fade-in py-4 lg:py-12">
         <Card className="relative overflow-hidden bg-[#02040a]">
           <div className="absolute top-0 right-0 p-32 bg-emerald-500/10 blur-[100px] rounded-full pointer-events-none" />
           <div className="absolute bottom-0 left-0 p-32 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-          <div className="p-10 flex flex-col items-center text-center">
+          <div className="p-4 sm:p-6 lg:p-10 flex flex-col items-center text-center">
             <div className="w-20 h-20 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.3)] mb-6">
               <CheckCircle2 size={40} className="text-emerald-400" />
             </div>
 
-            <h3 className="text-3xl font-black text-white mb-2 tracking-tight">Contract Deployed</h3>
+            <h3 className="text-2xl lg:text-3xl font-black text-white mb-2 tracking-tight">Contract Deployed</h3>
             <p className="text-zinc-400 mb-8">The trustless escrow agreement is now live on the Stellar network.</p>
 
             <div className="w-full bg-[#09090b]/80 border border-zinc-800 rounded-xl p-6 text-left space-y-4 mb-8">
@@ -262,17 +262,17 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
 
     return (
       <div className="w-full max-w-4xl mx-auto animate-fade-in">
-         <div className="mb-8">
-            <h2 className="text-3xl font-black text-white tracking-tighter uppercase mb-2">Initialize Deployment</h2>
-            <p className="text-zinc-500 font-medium">Final verification of contract parameters before signing.</p>
+         <div className="mb-4 lg:mb-8">
+            <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Initialize Deployment</h2>
+            <p className="text-zinc-500 font-medium text-sm lg:text-base">Final verification of contract parameters before signing.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="p-6 bg-[#02040a]">
-              <div className="flex items-center gap-3 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
+          <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+            <Card className="p-4 lg:p-6 bg-[#02040a]">
+              <div className="flex items-center gap-3 mb-4 lg:mb-6">
                 <FileText className="text-emerald-400" />
-                <h4 className="text-xl font-bold text-white tracking-tight">Contract Overview</h4>
+                <h4 className="text-lg lg:text-xl font-bold text-white tracking-tight">Contract Overview</h4>
               </div>
               
               {dealTitle && (
@@ -295,10 +295,10 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
               </div>
             </Card>
 
-            <Card className="p-6 bg-[#02040a]">
-              <div className="flex items-center gap-3 mb-6">
+            <Card className="p-4 lg:p-6 bg-[#02040a]">
+              <div className="flex items-center gap-3 mb-4 lg:mb-6">
                 <CheckCircle2 className="text-emerald-400" />
-                <h4 className="text-xl font-bold text-white tracking-tight">Milestone Schedule</h4>
+                <h4 className="text-lg lg:text-xl font-bold text-white tracking-tight">Milestone Schedule</h4>
               </div>
               
               <div className="space-y-3">
@@ -322,9 +322,9 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
             </Card>
           </div>
 
-          <div className="space-y-6">
-             <Card className="p-6 bg-[#02040a] sticky top-6">
-                <h4 className="text-xl font-bold text-white tracking-tight mb-6">Execution Summary</h4>
+          <div className="space-y-4 lg:space-y-6">
+             <Card className="p-4 lg:p-6 bg-[#02040a] sticky top-6">
+                <h4 className="text-lg lg:text-xl font-bold text-white tracking-tight mb-4 lg:mb-6">Execution Summary</h4>
                 
                 <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
                   <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest block mb-1">Total Locked Value</span>
@@ -401,11 +401,11 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
 
   // Input Form
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
+    <div className="w-full max-w-5xl mx-auto space-y-4 lg:space-y-8 animate-fade-in">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 lg:gap-4 mb-2 lg:mb-4">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tighter uppercase mb-2">Contract Parameters</h2>
-          <p className="text-zinc-500 font-medium">Configure new trustless agreement attributes.</p>
+          <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Contract Parameters</h2>
+          <p className="text-zinc-500 font-medium text-sm lg:text-base">Configure new trustless agreement attributes.</p>
         </div>
         
         {/* Demo Scenarios */}
@@ -427,15 +427,15 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          <div className="lg:col-span-2 space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-4 lg:space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
+
+          <div className="lg:col-span-2 space-y-4 lg:space-y-8">
             {/* General Info */}
-            <Card className="p-8 bg-[#02040a]">
-              <div className="flex items-center gap-3 mb-6">
+            <Card className="p-4 sm:p-6 lg:p-8 bg-[#02040a]">
+              <div className="flex items-center gap-3 mb-4 lg:mb-6">
                 <Settings2 className="text-emerald-400" />
-                <h3 className="text-xl font-bold text-white tracking-tight">General Info</h3>
+                <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">General Info</h3>
               </div>
               
               <div className="space-y-6">
@@ -464,10 +464,10 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
             </Card>
 
             {/* Participants */}
-            <Card className="p-8 bg-[#02040a]">
-              <div className="flex items-center gap-3 mb-6">
+            <Card className="p-4 sm:p-6 lg:p-8 bg-[#02040a]">
+              <div className="flex items-center gap-3 mb-4 lg:mb-6">
                  <Search className="text-emerald-400" />
-                <h3 className="text-xl font-bold text-white tracking-tight">Participants</h3>
+                <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Participants</h3>
               </div>
               
               <div className="space-y-6">
@@ -510,11 +510,11 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
             </Card>
 
             {/* Milestones */}
-            <Card className="p-8 bg-[#02040a]">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <Coins className="text-emerald-400" />
-                  <h3 className="text-xl font-bold text-white tracking-tight">Deliverables Schedule</h3>
+            <Card className="p-4 sm:p-6 lg:p-8 bg-[#02040a]">
+              <div className="flex items-center justify-between mb-4 lg:mb-6 gap-2">
+                <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                  <Coins className="text-emerald-400 shrink-0" />
+                  <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight truncate">Deliverables Schedule</h3>
                 </div>
                 <div className="flex items-center gap-3">
                    <div className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${totalMilestonePercent === 100 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
@@ -526,11 +526,11 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
 
               <div className="space-y-4">
                 {milestones.map((m, i) => (
-                  <div key={i} className="flex gap-4 items-start pb-4 border-b border-zinc-800/50 last:border-0 last:pb-0">
-                    <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-500 shrink-0 mt-2">
+                  <div key={i} className="flex gap-2 lg:gap-4 items-start pb-4 border-b border-zinc-800/50 last:border-0 last:pb-0">
+                    <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-500 shrink-0 mt-2">
                       {i + 1}
                     </div>
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-2 lg:gap-4">
                       <div className="md:col-span-7">
                         <label className="text-[10px] font-bold text-zinc-600 uppercase mb-1 block">Description</label>
                         <input
@@ -574,9 +574,9 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
 
           </div>
 
-          <div className="space-y-8">
-            <Card className="p-6 bg-[#02040a] sticky top-6">
-              <h3 className="text-xl font-bold text-white tracking-tight mb-6">Financial Setup</h3>
+          <div className="space-y-4 lg:space-y-8">
+            <Card className="p-4 lg:p-6 bg-[#02040a] sticky top-6">
+              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight mb-4 lg:mb-6">Financial Setup</h3>
 
               <div className="space-y-6">
                  <div>

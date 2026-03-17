@@ -92,31 +92,31 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in">
-      <div className="flex justify-between items-end mb-8">
+    <div className="w-full max-w-4xl mx-auto space-y-4 lg:space-y-8 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-4 lg:mb-8">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tighter uppercase mb-2">Liquidity Terminal</h2>
-          <p className="text-zinc-500 font-medium">Provision testnet assets for smart contract execution.</p>
+          <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tighter uppercase mb-1 lg:mb-2">Liquidity Terminal</h2>
+          <p className="text-zinc-500 font-medium text-sm lg:text-base">Provision testnet assets for smart contract execution.</p>
         </div>
         {xlmBalance && (
-          <div className="bg-[#09090b] border border-zinc-800 rounded-xl px-5 py-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-1">Network Balance</span>
-            <span className="font-mono text-emerald-400 font-bold text-xl">
+          <div className="bg-[#09090b] border border-zinc-800 rounded-xl px-4 lg:px-5 py-2 lg:py-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)]">
+            <span className="text-[10px] lg:text-xs font-bold text-zinc-500 uppercase tracking-widest block mb-0.5">Network Balance</span>
+            <span className="font-mono text-emerald-400 font-bold text-lg lg:text-xl">
               {parseFloat(xlmBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} XLM
             </span>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-8">
         {/* Section 1: Friendbot Funding */}
-        <Card className="p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">1</div>
-            <h3 className="text-xl font-bold text-white tracking-tight">Initialize Vault</h3>
+        <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
+          <div className="flex items-center gap-3 mb-4 lg:mb-6">
+            <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">1</div>
+            <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Initialize Vault</h3>
           </div>
-          
-          <p className="text-zinc-400 text-sm mb-8 flex-1 leading-relaxed">
+
+          <p className="text-zinc-400 text-sm mb-4 lg:mb-8 flex-1 leading-relaxed">
             Request 10,000 XLM from the Soroban friendbot. Native XLM is required for gas fees and can be used directly as payment in escrow deals.
           </p>
 
@@ -162,11 +162,11 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
         </Card>
 
         {/* Section 2: Soroswap Integration */}
-        <Card className="p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
-          <div className="flex items-center justify-between mb-6">
+        <Card className="p-4 sm:p-6 lg:p-8 flex flex-col h-full bg-[#02040a]" glowOnHover>
+          <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold">2</div>
-              <h3 className="text-xl font-bold text-white tracking-tight">Acquire USDC</h3>
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white font-bold text-sm">2</div>
+              <h3 className="text-lg lg:text-xl font-bold text-white tracking-tight">Acquire USDC</h3>
             </div>
             <Tag color="zinc">Soroswap DEX</Tag>
           </div>

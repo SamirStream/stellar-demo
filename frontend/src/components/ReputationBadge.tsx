@@ -223,38 +223,38 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
   }, [walletAddress, handleLookup]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-8 pb-32 animate-fade-in relative z-10">
-      
+    <div className="w-full max-w-5xl mx-auto space-y-6 lg:space-y-8 pb-8 lg:pb-32 animate-fade-in relative z-10">
+
       {/* Header */}
-      <div className="flex flex-col items-center text-center space-y-6 mb-12">
+      <div className="flex flex-col items-center text-center space-y-4 lg:space-y-6 mb-6 lg:mb-12">
         {/* Radar Icon */}
-        <div className="relative mb-4">
+        <div className="relative mb-2 lg:mb-4">
           <div className="absolute inset-0 bg-emerald-500/5 blur-3xl rounded-full"></div>
-          <div className="relative w-28 h-28 rounded-full border border-emerald-500/30 bg-[#02040a] flex items-center justify-center shadow-[inset_0_0_30px_rgba(16,185,129,0.1)] overflow-hidden">
-            <div className="absolute top-1/2 left-1/2 w-[112px] h-[112px] -translate-x-1/2 -translate-y-1/2 origin-center animate-radar">
+          <div className="relative w-20 h-20 lg:w-28 lg:h-28 rounded-full border border-emerald-500/30 bg-[#02040a] flex items-center justify-center shadow-[inset_0_0_30px_rgba(16,185,129,0.1)] overflow-hidden">
+            <div className="absolute top-1/2 left-1/2 w-[80px] lg:w-[112px] h-[80px] lg:h-[112px] -translate-x-1/2 -translate-y-1/2 origin-center animate-radar">
               <div className="w-full h-full bg-[conic-gradient(from_0deg,transparent_80%,rgba(74,222,128,0.35)_100%)] rounded-full"></div>
             </div>
-            <div className="absolute inset-4 border border-emerald-500/10 rounded-full"></div>
-            <div className="absolute inset-8 border border-emerald-500/15 rounded-full"></div>
-            <Award size={28} className="text-emerald-400 relative z-10 drop-shadow-[0_0_12px_rgba(74,222,128,1)]" />
+            <div className="absolute inset-3 lg:inset-4 border border-emerald-500/10 rounded-full"></div>
+            <div className="absolute inset-6 lg:inset-8 border border-emerald-500/15 rounded-full"></div>
+            <Award size={22} className="text-emerald-400 relative z-10 drop-shadow-[0_0_12px_rgba(74,222,128,1)] lg:!w-7 lg:!h-7" />
           </div>
         </div>
 
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-          <span className="text-xs font-bold tracking-widest uppercase">On-Chain Oracle</span>
+          <span className="text-[10px] lg:text-xs font-bold tracking-widest uppercase">On-Chain Oracle</span>
         </div>
-        <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight">
           Trust, but <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-300">Verify</span>
         </h2>
-        <p className="text-zinc-400 max-w-2xl mx-auto">
+        <p className="text-zinc-400 max-w-2xl mx-auto text-sm lg:text-base px-2">
           Query the execution ledger to cryptographically verify any participant's deal history, volume, and settled milestones.
         </p>
       </div>
 
       {/* Search Input */}
-      <div className="flex flex-col md:flex-row gap-4 max-w-2xl mx-auto">
+      <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 max-w-2xl mx-auto px-1">
         <div className="relative flex-1 group">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" size={20} />
+          <Search className="absolute left-4 lg:left-5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" size={18} />
           <input
             type="text"
             value={address}
@@ -262,10 +262,10 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
             onKeyDown={(e) => e.key === 'Enter' && handleLookup()}
             placeholder="Enter Public Key (G...)"
             title="Search public key"
-            className="w-full bg-[#050505] border border-zinc-800 rounded-2xl py-5 pl-14 pr-5 text-white font-mono text-sm focus:border-emerald-500/60 focus:shadow-[0_0_30px_rgba(16,185,129,0.08)] outline-none transition-all placeholder:text-zinc-700"
+            className="w-full bg-[#050505] border border-zinc-800 rounded-xl lg:rounded-2xl py-3.5 lg:py-5 pl-11 lg:pl-14 pr-4 lg:pr-5 text-white font-mono text-sm focus:border-emerald-500/60 focus:shadow-[0_0_30px_rgba(16,185,129,0.08)] outline-none transition-all placeholder:text-zinc-700"
           />
         </div>
-        <Button onClick={handleLookup} disabled={loading || !address} variant="primary" className="px-10 py-5 whitespace-nowrap">
+        <Button onClick={handleLookup} disabled={loading || !address} variant="primary" className="px-8 lg:px-10 py-3.5 lg:py-5 whitespace-nowrap">
           {loading ? 'Scanning...' : 'Scan Ledger'}
         </Button>
       </div>
@@ -295,11 +295,11 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
 
       {/* Results */}
       {!loading && (reputation !== null || activity !== null) && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto animate-fade-in mt-12">
-          
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 max-w-6xl mx-auto animate-fade-in mt-6 lg:mt-12">
+
           {/* Main Reputation Score Card */}
           <Card className="lg:col-span-1 bg-gradient-to-b from-[#02040a] to-[#09090b]" glowOnHover>
-            <div className="p-8 flex flex-col items-center justify-center text-center h-full min-h-[380px]">
+            <div className="p-4 sm:p-6 lg:p-8 flex flex-col items-center justify-center text-center h-full min-h-[280px] lg:min-h-[380px]">
             <div className="relative mb-8 group">
               <div className="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="w-32 h-32 rounded-full border border-emerald-500/30 bg-[#02040a] relative z-10 flex flex-col items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.2)]">
@@ -326,7 +326,7 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
 
           {/* Activity Breakdown */}
           {activity && (
-            <Card className="lg:col-span-2 p-8 bg-[#02040a]">
+            <Card className="lg:col-span-2 p-4 sm:p-6 lg:p-8 bg-[#02040a]">
               <div className="flex justify-between items-start mb-8 flex-col sm:flex-row gap-4">
                 <div>
                   <h3 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
@@ -407,7 +407,7 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
       )}
 
       {/* ── Leaderboard ── */}
-      <div className="max-w-6xl mx-auto mt-16 space-y-6">
+      <div className="max-w-6xl mx-auto mt-8 lg:mt-16 space-y-4 lg:space-y-6">
         <div className="flex items-center gap-3 mb-2">
           <Crown size={18} className="text-amber-400" />
           <h3 className="text-lg font-black uppercase tracking-widest text-white">On-Chain Leaderboard</h3>
@@ -424,9 +424,9 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
         ) : (
           <div className="space-y-6">
             {/* Top Clients + Top Providers — 2 columns */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
               {/* Top Clients */}
-              <Card className="p-6">
+              <Card className="p-4 lg:p-6">
                 <div className="flex items-center gap-2 mb-5 pb-4 border-b border-zinc-800/60">
                   <User size={14} className="text-blue-400" />
                   <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Top Clients</h4>
@@ -467,7 +467,7 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
               </Card>
 
               {/* Top Providers */}
-              <Card className="p-6">
+              <Card className="p-4 lg:p-6">
                 <div className="flex items-center gap-2 mb-5 pb-4 border-b border-zinc-800/60">
                   <Briefcase size={14} className="text-emerald-400" />
                   <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Top Providers</h4>
@@ -515,8 +515,8 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
 
             {/* Top BD (Connectors) — full width */}
             {leaderboard.connectors.length > 0 && (
-              <Card className="p-6">
-                <div className="flex items-center gap-2 mb-5 pb-4 border-b border-zinc-800/60">
+              <Card className="p-4 lg:p-6">
+                <div className="flex items-center gap-2 mb-4 lg:mb-5 pb-3 lg:pb-4 border-b border-zinc-800/60">
                   <Network size={14} className="text-purple-400" />
                   <h4 className="text-xs font-black uppercase tracking-widest text-zinc-300">Top BD Connectors</h4>
                   <span className="ml-auto text-[9px] text-zinc-600 uppercase tracking-widest">by deals facilitated</span>
