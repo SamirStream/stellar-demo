@@ -587,29 +587,33 @@ export default function App() {
           </div>
         </footer>
 
-        {/* Mobile Bottom Tab Bar — shown only when connected, hidden on lg+ */}
-        {wallet.isConnected && (
-          <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#050505]/95 backdrop-blur-xl border-t border-zinc-800/80 lg:hidden">
-            <div className="flex items-center justify-around h-14">
-              {tabs.map(tab => (
-                <button
-                  type="button"
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
-                    activeTab === tab.id
-                      ? 'text-emerald-400'
-                      : 'text-zinc-600 active:text-zinc-400'
-                  }`}
-                >
-                  <tab.icon size={18} />
-                  <span className="text-[9px] font-bold uppercase tracking-wider">{tab.label}</span>
-                </button>
-              ))}
-            </div>
-          </nav>
-        )}
       </div>
+
+      {/* Mobile Bottom Tab Bar — OUTSIDE main container to avoid overflow-x-hidden breaking position:fixed on mobile browsers */}
+      {wallet.isConnected && (
+        <nav className="fixed bottom-0 left-0 right-0 z-[9999] bg-[#0a0a0a] border-t border-zinc-700 lg:hidden pb-[env(safe-area-inset-bottom,0px)]">
+          <div className="flex items-center justify-around h-14">
+            {tabs.map(tab => (
+              <button
+                type="button"
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative ${
+                  activeTab === tab.id
+                    ? 'text-emerald-400'
+                    : 'text-zinc-500 active:text-zinc-300'
+                }`}
+              >
+                {activeTab === tab.id && (
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-emerald-400 rounded-full" />
+                )}
+                <tab.icon size={20} />
+                <span className="text-[9px] font-bold uppercase tracking-wider">{tab.id === 'create' ? 'Deploy' : tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
     </ToastContext.Provider>
   );
 }
