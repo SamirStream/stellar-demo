@@ -4,7 +4,7 @@ import { soroswapClient, TESTNET_TOKENS } from '../lib/soroswap';
 import { useToast } from '../App';
 import type { SwapQuote } from '../lib/soroswap';
 import { Card, Button, Tag } from './ui/Components';
-import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Zap, ArrowDown, ExternalLink, AlertCircle, RefreshCw, CheckCircle2, ArrowRight, Droplets } from 'lucide-react';
 
 interface Props {
   walletAddress: string;
@@ -27,6 +27,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [swapLoading, setSwapLoading] = useState(false);
   const [error, setError] = useState('');
+  const [poolEmpty, setPoolEmpty] = useState(false);
   const [txHash, setTxHash] = useState('');
 
   const handleFundbot = async () => {
@@ -50,6 +51,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
 
     setQuoteLoading(true);
     setError('');
+    setPoolEmpty(false);
     try {
       const stroops = BigInt(Math.round(amount * 1e7)).toString();
       const q = await soroswapClient.getQuote(
@@ -59,7 +61,12 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       );
       setQuote(q);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch quote');
+      const msg = (err.message || '').toLowerCase();
+      if (msg.includes('no path') || msg.includes('no route')) {
+        setPoolEmpty(true);
+      } else {
+        setError(err.message || 'Failed to fetch quote');
+      }
       setQuote(null);
     } finally {
       setQuoteLoading(false);
@@ -216,7 +223,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                     <input
                       type="number"
                       value={xlmAmount}
-                      onChange={(e) => { setXlmAmount(e.target.value); setQuote(null); }}
+                      onChange={(e) => { setXlmAmount(e.target.value); setQuote(null); setPoolEmpty(false); }}
                       placeholder="0.0"
                       min="0"
                       step="any"
@@ -273,7 +280,40 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
                 </div>
               )}
 
-              {error && (
+              {/* Empty pool notice */}
+              {poolEmpty && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 animate-fade-in space-y-3">
+                  <div className="flex items-start gap-2">
+                    <Droplets size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-amber-400 font-bold text-sm mb-1">No Liquidity Pool Found</p>
+                      <p className="text-zinc-400 text-xs leading-relaxed">
+                        The XLM → USDC pool on testnet is currently empty. Testnet pools are periodically wiped during network resets. You can add liquidity yourself or use XLM directly for escrow deals.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <a
+                      href={`https://testnet.soroswap.finance/#/liquidity/add/${TESTNET_TOKENS.XLM}/${TESTNET_TOKENS.USDC}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1"
+                    >
+                      <Button variant="secondary" className="w-full py-2 text-xs" icon={ExternalLink}>
+                        Add Liquidity
+                      </Button>
+                    </a>
+                    {onFundComplete && (
+                      <Button onClick={onFundComplete} variant="primary" className="flex-1 py-2 text-xs" icon={ArrowRight}>
+                        Use XLM Instead
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Generic API error */}
+              {error && !poolEmpty && (
                 <div className="flex items-start gap-2 text-red-400 text-xs bg-red-500/10 p-3 rounded-lg border border-red-500/20">
                   <AlertCircle size={14} className="shrink-0 mt-0.5" />
                   <span className="flex-1">{error}</span>
