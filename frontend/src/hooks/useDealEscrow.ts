@@ -12,15 +12,119 @@ const rpc = StellarSdk.rpc;
 
 const MAX_TX_POLL_RETRIES = 30; // 30 × 2s = 60s max wait
 
-// Parse Soroban simulation errors into user-friendly messages
-function friendlyError(simResult: any): string {
+// ── Operation types & Soroban error codes ──────────────────────────────
+type EscrowOperation = 'create_deal' | 'deposit' | 'release_milestone' | 'dispute' | 'resolve_dispute' | 'refund';
+
+// Maps numeric error codes from EscrowError enum in lib.rs
+const ESCROW_ERROR_CODES: Record<number, string> = {
+  1: 'NotInitialized', 2: 'AlreadyInitialized', 3: 'Unauthorized',
+  4: 'DealNotFound', 5: 'InvalidMilestone', 6: 'MilestoneNotPending',
+  7: 'MilestoneNotFunded', 8: 'DealNotActive', 9: 'InvalidAmount',
+  10: 'InvalidSplit', 11: 'AlreadyFunded',
+};
+
+const OP_LABELS: Record<EscrowOperation, string> = {
+  create_deal: 'deal creation',
+  deposit: 'deposit',
+  release_milestone: 'milestone release',
+  dispute: 'dispute',
+  resolve_dispute: 'dispute resolution',
+  refund: 'refund',
+};
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Operation × error code → contextual user-facing message
+function contextualContractError(errorName: string, operation: EscrowOperation): string {
+  const messages: Record<string, Record<string, string>> = {
+    deposit: {
+      Unauthorized: 'Only the client who created this deal can deposit funds.',
+      DealNotFound: 'This deal was not found on-chain. It may have been removed or the ID is incorrect.',
+      InvalidMilestone: 'This milestone index does not exist in the deal.',
+      AlreadyFunded: 'This milestone has already been funded. No additional deposit is needed.',
+      MilestoneNotPending: 'This milestone is not in a pending state and cannot accept deposits.',
+      NotInitialized: 'The escrow contract has not been initialized. Contact the platform administrator.',
+    },
+    release_milestone: {
+      Unauthorized: 'Only the client who created this deal can release milestones.',
+      DealNotActive: 'This deal is not active. Milestones can only be released on active deals with funded escrow.',
+      DealNotFound: 'This deal was not found on-chain. It may have been removed or the ID is incorrect.',
+      InvalidMilestone: 'This milestone index does not exist in the deal.',
+      MilestoneNotFunded: "This milestone hasn't been funded yet. The client needs to deposit funds before it can be released.",
+      NotInitialized: 'The escrow contract has not been initialized. Contact the platform administrator.',
+    },
+    dispute: {
+      Unauthorized: 'Only the client or provider can file a dispute. Connectors cannot dispute.',
+      DealNotFound: 'This deal was not found on-chain. It may have been removed or the ID is incorrect.',
+      InvalidMilestone: 'This milestone index does not exist in the deal.',
+      MilestoneNotFunded: 'Only funded milestones can be disputed. This milestone is not yet funded or has already been released.',
+      NotInitialized: 'The escrow contract has not been initialized. Contact the platform administrator.',
+    },
+    create_deal: {
+      Unauthorized: 'Deal creation requires wallet authorization. Make sure you approve the transaction in your wallet.',
+      InvalidSplit: 'The platform fee or connector share exceeds 100%. Check your split configuration.',
+      InvalidAmount: 'All milestone amounts must be greater than zero.',
+      NotInitialized: 'The escrow contract has not been initialized. Contact the platform administrator.',
+    },
+    resolve_dispute: {
+      Unauthorized: 'Only the contract administrator can resolve disputes.',
+      DealNotFound: 'This deal was not found on-chain.',
+      InvalidMilestone: 'This milestone index does not exist in the deal.',
+      MilestoneNotFunded: 'This milestone is not in a disputed state.',
+      InvalidSplit: 'The refund split must be between 0 and 10000 basis points.',
+      NotInitialized: 'The escrow contract has not been initialized.',
+    },
+    refund: {
+      Unauthorized: 'Only the contract administrator can issue refunds.',
+      DealNotFound: 'This deal was not found on-chain.',
+      NotInitialized: 'The escrow contract has not been initialized.',
+    },
+  };
+
+  const opMessages = messages[operation];
+  if (opMessages?.[errorName]) return opMessages[errorName];
+
+  // Generic fallback per error name
+  const generic: Record<string, string> = {
+    NotInitialized: 'The escrow contract has not been initialized. Contact the platform administrator.',
+    Unauthorized: 'You are not authorized to perform this action.',
+    DealNotFound: 'This deal was not found on-chain. It may have been removed or the ID is incorrect.',
+    InvalidMilestone: 'The milestone index is out of range for this deal.',
+    MilestoneNotPending: 'This milestone is not in a pending state.',
+    MilestoneNotFunded: 'This milestone is not funded.',
+    DealNotActive: 'This deal is not currently active.',
+    InvalidAmount: 'The amount provided is invalid (zero or negative).',
+    InvalidSplit: 'The fee split configuration is invalid.',
+    AlreadyFunded: 'This milestone has already been funded.',
+    AlreadyInitialized: 'The contract has already been initialized.',
+  };
+
+  return generic[errorName] || `Contract error: ${errorName}. ${capitalize(OP_LABELS[operation])} could not be completed.`;
+}
+
+// Parse Soroban simulation errors into context-aware user-friendly messages
+function friendlyError(simResult: any, operation: EscrowOperation): string {
   const raw = JSON.stringify(simResult);
-  if (raw.includes('Budget')) return 'Transaction too expensive. Try a smaller amount.';
-  if (raw.includes('Storage')) return 'Contract data not found. The deal may not exist.';
-  if (raw.includes('Expired')) return 'Transaction expired. Please try again.';
-  if (/insufficient.balance/i.test(raw)) return 'Insufficient balance for this operation.';
-  if (raw.includes('ExistingValue')) return 'This action was already performed.';
-  return 'Transaction simulation failed. Please try again.';
+
+  // 1. Try to extract contract error code: "Error(Contract, #N)"
+  const codeMatch = raw.match(/#(\d+)/);
+  if (codeMatch) {
+    const errorCode = parseInt(codeMatch[1], 10);
+    const errorName = ESCROW_ERROR_CODES[errorCode];
+    if (errorName) return contextualContractError(errorName, operation);
+  }
+
+  // 2. Fallback to generic simulation error checks, enriched with operation label
+  const label = OP_LABELS[operation];
+  if (raw.includes('Budget')) return `Transaction too expensive for ${label}. Try a smaller amount.`;
+  if (raw.includes('Storage')) return 'Contract data not found. The deal may not exist on-chain.';
+  if (raw.includes('Expired')) return `Transaction expired while attempting ${label}. Please try again.`;
+  if (/insufficient.balance/i.test(raw)) return `Insufficient token balance to ${label}. Check your wallet balance.`;
+  if (raw.includes('ExistingValue')) return `This ${label} action was already performed.`;
+
+  return `${capitalize(label)} failed during simulation. The deal state may have changed — try refreshing.`;
 }
 
 export interface DealData {
@@ -48,7 +152,8 @@ export function useDealEscrow(
   // Helper: build, sign, and submit a transaction
   const submitContractCall = useCallback(
     async (
-      operation: StellarSdk.xdr.Operation
+      operation: StellarSdk.xdr.Operation,
+      opName: EscrowOperation
     ): Promise<any> => {
       if (!walletAddress || !contractId) {
         throw new Error('Wallet not connected or contract not configured');
@@ -71,7 +176,7 @@ export function useDealEscrow(
         // Simulate to get footprint
         const simResult = await sorobanServer.simulateTransaction(tx);
         if (!rpc.Api.isSimulationSuccess(simResult)) {
-          throw new Error(friendlyError(simResult));
+          throw new Error(friendlyError(simResult, opName));
         }
 
         // Assemble with simulation results
@@ -94,7 +199,7 @@ export function useDealEscrow(
         const sendResult = await sorobanServer.sendTransaction(signedTx);
 
         if (sendResult.status === 'ERROR') {
-          throw new Error('Transaction submission failed. Please try again.');
+          throw new Error(`${capitalize(OP_LABELS[opName])} submission failed. The network may be congested — please try again.`);
         }
 
         // Wait for confirmation with timeout
@@ -102,7 +207,7 @@ export function useDealEscrow(
         let retries = 0;
         do {
           if (retries >= MAX_TX_POLL_RETRIES) {
-            throw new Error('Transaction confirmation timed out. Check Stellar Explorer for status.');
+            throw new Error(`${capitalize(OP_LABELS[opName])} confirmation timed out. The transaction may still succeed — check Stellar Explorer.`);
           }
           await new Promise((r) => setTimeout(r, 2000));
           getResult = await sorobanServer.getTransaction(sendResult.hash);
@@ -110,7 +215,7 @@ export function useDealEscrow(
         } while (getResult.status === rpc.Api.GetTransactionStatus.NOT_FOUND);
 
         if (getResult.status === rpc.Api.GetTransactionStatus.FAILED) {
-          throw new Error('Transaction failed on-chain. The contract rejected the operation.');
+          throw new Error(`${capitalize(OP_LABELS[opName])} was rejected by the contract. The deal state may have changed — try refreshing the dashboard.`);
         }
 
         // Attach the hash from sendResult (getTransaction doesn't always include it)
@@ -157,7 +262,7 @@ export function useDealEscrow(
         milestonesVec
       );
 
-      const result = await submitContractCall(op);
+      const result = await submitContractCall(op, 'create_deal');
       const txHash = result._txHash || result.hash || '';
 
       // Extract deal_id from return value
@@ -195,7 +300,7 @@ export function useDealEscrow(
         StellarSdk.nativeToScVal(milestoneIdx, { type: 'u32' })
       );
 
-      const result = await submitContractCall(op);
+      const result = await submitContractCall(op, 'deposit');
       const txHash = result._txHash || result.hash || '';
       return { txHash };
     },
@@ -216,7 +321,7 @@ export function useDealEscrow(
         StellarSdk.nativeToScVal(milestoneIdx, { type: 'u32' })
       );
 
-      const result = await submitContractCall(op);
+      const result = await submitContractCall(op, 'release_milestone');
       const txHash = result._txHash || result.hash || '';
       return { txHash };
     },
@@ -345,7 +450,7 @@ export function useDealEscrow(
         StellarSdk.nativeToScVal(milestoneIdx, { type: 'u32' })
       );
 
-      const result = await submitContractCall(op);
+      const result = await submitContractCall(op, 'dispute');
       const txHash = result._txHash || result.hash || '';
       return { txHash };
     },
@@ -368,7 +473,7 @@ export function useDealEscrow(
         StellarSdk.nativeToScVal(refundBps, { type: 'u32' })
       );
 
-      const result = await submitContractCall(op);
+      const result = await submitContractCall(op, 'resolve_dispute');
       const txHash = result._txHash || result.hash || '';
       return { txHash };
     },

@@ -116,6 +116,10 @@ export function DealDashboard({
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [errorContext, setErrorContext] = useState<{
+    title: string;
+    suggestion?: string;
+  } | null>(null);
   const [lastTxHash, setLastTxHash] = useState('');
   const [splitView, setSplitView] = useState<{ milestoneIdx: number; txHash: string } | null>(null);
 
@@ -251,6 +255,7 @@ export function DealDashboard({
 
     setActionLoading(`deposit-${milestoneIdx}`);
     setError('');
+    setErrorContext(null);
     setSplitView(null);
     try {
       const res = await onDeposit(selectedDealId, milestoneIdx);
@@ -259,8 +264,13 @@ export function DealDashboard({
       toast('Milestone funded successfully!', 'success');
       await fetchAllDeals();
     } catch (err: any) {
-      setError(err.message || 'Deposit failed');
-      toast('Deposit failed', 'error');
+      const msg = err.message || 'Deposit failed';
+      setError(msg);
+      setErrorContext({
+        title: 'Deposit Failed',
+        suggestion: 'Only the deal client can fund milestones. Make sure you have sufficient balance and the milestone is still pending.',
+      });
+      toast(`Deposit failed: ${msg.slice(0, 80)}`, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -270,6 +280,7 @@ export function DealDashboard({
     if (selectedDealId === null) return;
     setActionLoading(`release-${milestoneIdx}`);
     setError('');
+    setErrorContext(null);
     setConfirmAction(null);
     try {
       const res = await onRelease(selectedDealId, milestoneIdx);
@@ -284,8 +295,13 @@ export function DealDashboard({
       toast('Milestone released — 3-way split executed!', 'success');
       await fetchAllDeals();
     } catch (err: any) {
-      setError(err.message || 'Release failed');
-      toast('Release failed', 'error');
+      const msg = err.message || 'Release failed';
+      setError(msg);
+      setErrorContext({
+        title: 'Milestone Release Failed',
+        suggestion: 'Only the client can release funded milestones. Check that the deal is active and the milestone has been funded.',
+      });
+      toast(`Release failed: ${msg.slice(0, 80)}`, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -295,6 +311,7 @@ export function DealDashboard({
     if (selectedDealId === null) return;
     setActionLoading(`dispute-${milestoneIdx}`);
     setError('');
+    setErrorContext(null);
     setConfirmAction(null);
     try {
       const res = await onDispute(selectedDealId, milestoneIdx);
@@ -303,8 +320,13 @@ export function DealDashboard({
       toast('Dispute filed on-chain', 'info');
       await fetchAllDeals();
     } catch (err: any) {
-      setError(err.message || 'Dispute failed');
-      toast('Dispute failed', 'error');
+      const msg = err.message || 'Dispute failed';
+      setError(msg);
+      setErrorContext({
+        title: 'Dispute Filing Failed',
+        suggestion: 'Only the client or provider can file disputes on funded milestones.',
+      });
+      toast(`Dispute failed: ${msg.slice(0, 80)}`, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -499,7 +521,7 @@ export function DealDashboard({
                 return (
                   <div
                     key={deal.id}
-                    onClick={() => { setSelectedDealId(deal.id); setMobileShowDetail(true); setSplitView(null); setLastTxHash(''); setError(''); }}
+                    onClick={() => { setSelectedDealId(deal.id); setMobileShowDetail(true); setSplitView(null); setLastTxHash(''); setError(''); setErrorContext(null); }}
                     className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 group ${
                       isSelected 
                         ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
@@ -582,17 +604,49 @@ export function DealDashboard({
               {error && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
                   <AlertCircle className="text-red-400 shrink-0 mt-0.5" size={18} />
-                  <div className="flex-1">
-                    <h4 className="text-red-400 font-medium text-sm">Execution Failed</h4>
-                    <p className="text-red-500/70 text-xs mt-1">{error}</p>
+                  <div className="flex-1 space-y-2">
+                    <h4 className="text-red-400 font-medium text-sm">{errorContext?.title || 'Execution Failed'}</h4>
+                    <p className="text-red-500/70 text-xs">{error}</p>
+                    {selectedDeal && getRole(selectedDeal, walletAddress) && (
+                      <p className="text-zinc-500 text-xs">
+                        You are connected as <span className="text-zinc-300 font-medium">{getRole(selectedDeal, walletAddress)}</span> in this deal.
+                      </p>
+                    )}
+                    {errorContext?.suggestion && (
+                      <p className="text-zinc-400 text-xs italic">{errorContext.suggestion}</p>
+                    )}
                   </div>
                   {(error.includes('Insufficient balance') && onNavigateToFund) ? (
                     <Button variant="secondary" onClick={onNavigateToFund} className="text-xs py-1.5 px-3">Fund Wallet</Button>
                   ) : (
-                    <Button variant="secondary" onClick={fetchAllDeals} className="text-xs py-1.5 px-3">Retry Sync</Button>
+                    <Button variant="secondary" onClick={() => { setError(''); setErrorContext(null); fetchAllDeals(); }} className="text-xs py-1.5 px-3">Refresh</Button>
                   )}
                 </div>
               )}
+
+              {/* Role banner */}
+              {(() => {
+                const role = getRole(selectedDeal, walletAddress);
+                if (!role) return (
+                  <div className="bg-zinc-800/50 border border-zinc-700/30 rounded-xl p-3 flex items-center gap-2 text-zinc-400 text-xs">
+                    <User size={14} className="shrink-0" />
+                    <span>You are not a participant in this deal. Viewing in read-only mode.</span>
+                  </div>
+                );
+                const roleInfo: Record<string, string> = {
+                  Client: 'You can fund milestones, release payments, and file disputes.',
+                  Provider: 'You will receive payment when the client releases funded milestones. You can file disputes on funded milestones.',
+                  Connector: 'You will receive your BD share when milestones are released. You cannot fund, release, or dispute.',
+                };
+                return (
+                  <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-3 flex items-center gap-3 text-xs">
+                    <div className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider text-[10px]">
+                      {role}
+                    </div>
+                    <span className="text-zinc-400">{roleInfo[role]}</span>
+                  </div>
+                );
+              })()}
 
               {/* Detail Header Card */}
               <Card className="p-6 relative overflow-hidden bg-[#02040a]">
@@ -765,6 +819,31 @@ export function DealDashboard({
                                       {actionLoading === `release-${i}` ? 'Signing...' : 'Accept & Release to Provider'}
                                     </Button>
                                   )}
+                                </div>
+                              )}
+                              {/* Role-aware informational hints */}
+                              {status === 'Pending' && !isClient && (
+                                <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/30 text-zinc-400 text-[10px]">
+                                  <Clock size={12} className="shrink-0 text-zinc-500" />
+                                  <span>Waiting for the client to fund this milestone.</span>
+                                </div>
+                              )}
+                              {status === 'Funded' && !isClient && isParty && selectedDeal.provider === walletAddress && (
+                                <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px]">
+                                  <Activity size={12} className="shrink-0" />
+                                  <span>Milestone funded. Deliver the work and the client will release payment.</span>
+                                </div>
+                              )}
+                              {status === 'Funded' && !isClient && !isParty && (
+                                <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/30 text-zinc-400 text-[10px]">
+                                  <Clock size={12} className="shrink-0 text-zinc-500" />
+                                  <span>Funded and awaiting client approval. As a connector, you will receive your share when released.</span>
+                                </div>
+                              )}
+                              {status === 'Released' && (
+                                <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px]">
+                                  <CheckCircle size={12} className="shrink-0" />
+                                  <span>Funds distributed via atomic 3-way split.</span>
                                 </div>
                               )}
                             </div>

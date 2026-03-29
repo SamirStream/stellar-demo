@@ -48,8 +48,11 @@ export class ErrorBoundary extends Component<Props, State> {
               color: '#ef4444',
             }}>!</div>
             <h2 style={{ marginBottom: '0.75rem' }}>Something went wrong</h2>
-            <p style={{ color: '#9ca3af', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-              {this.state.error?.message || 'An unexpected error occurred'}
+            <p style={{ color: '#9ca3af', marginBottom: '0.75rem', fontSize: '0.9rem' }}>
+              {this.state.error?.message || 'An unexpected error occurred in the application.'}
+            </p>
+            <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.8rem' }}>
+              Try reloading the page. If the issue persists, disconnect your wallet, clear your browser cache, and reconnect.
             </p>
             <button
               onClick={() => window.location.reload()}

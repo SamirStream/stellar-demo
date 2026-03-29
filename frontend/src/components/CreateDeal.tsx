@@ -193,8 +193,9 @@ export function CreateDeal({ onCreateDeal, onDealCreated }: Props) {
       toast(`Deal #${res.dealId} created on Stellar!`, 'success');
     } catch (err: any) {
       console.error('[CreateDeal] Failed:', err);
-      setError(err.message || 'Failed to create deal');
-      toast('Deal creation failed', 'error');
+      const msg = err.message || 'Failed to create deal';
+      setError(msg);
+      toast(`Deal creation failed: ${msg.slice(0, 80)}`, 'error');
     } finally {
       setLoading(false);
       setTxStep(null);

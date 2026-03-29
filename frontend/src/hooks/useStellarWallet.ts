@@ -268,7 +268,7 @@ export function useStellarWallet(): WalletState {
         if (msg.includes('not available') || msg.includes('not found') || msg.includes('not installed')) {
           throw new Error('Wallet not available. Please reconnect.');
         }
-        throw new Error(`Signing failed: ${err?.message || 'Unknown error'}`);
+        throw new Error(`Wallet signing failed: ${err?.message || 'Unknown error'}. Try disconnecting and reconnecting your wallet.`);
       }
     },
     []

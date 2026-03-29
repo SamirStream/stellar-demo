@@ -209,7 +209,7 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch reputation');
+      setError(err.message || 'Unable to load reputation data from the contract. The network may be slow — try again.');
     } finally {
       setLoading(false);
     }
@@ -420,7 +420,7 @@ export function ReputationBadge({ getReputation, getDealCount, getDeal, walletAd
             <span className="text-sm">Scanning ledger…</span>
           </div>
         ) : !leaderboard || (leaderboard.clients.length === 0 && leaderboard.providers.length === 0) ? (
-          <p className="text-sm text-zinc-600 text-center py-8">No on-chain data found.</p>
+          <p className="text-sm text-zinc-600 text-center py-8">No on-chain activity found. Reputation builds as deals are completed.</p>
         ) : (
           <div className="space-y-6">
             {/* Top Clients + Top Providers — 2 columns */}

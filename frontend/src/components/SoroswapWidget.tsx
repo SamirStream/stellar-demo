@@ -65,7 +65,7 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
       if (msg.includes('no path') || msg.includes('no route')) {
         setPoolEmpty(true);
       } else {
-        setError(err.message || 'Failed to fetch quote');
+        setError(err.message || 'Failed to fetch swap quote. The Soroswap API may be temporarily unavailable.');
       }
       setQuote(null);
     } finally {
@@ -91,8 +91,8 @@ export function SoroswapWidget({ walletAddress, signTransaction, onSwapComplete,
         onSwapComplete(quote.amountOut);
       }
     } catch (err: any) {
-      setError(err.message || 'Swap failed');
-      toast('Swap failed', 'error');
+      setError(err.message || 'Swap transaction failed. Check your balance and try again.');
+      toast('Swap failed — check the error details below', 'error');
     } finally {
       setSwapLoading(false);
     }
